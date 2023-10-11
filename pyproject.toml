@@ -20,6 +20,7 @@ loguru = "^0.6.0"
 pygls = "0.13.1"
 tree-sitter = "^0.20.1"
 pydantic = "^1.10"
+lark = "^1.1.7"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^5.0.4"
