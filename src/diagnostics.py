@@ -1,10 +1,16 @@
+import sys
+import warnings
 from lark import UnexpectedInput, UnexpectedToken
 from pygls.lsp.types.language_features import Diagnostic, List, Position, Range
+from pygls.workspace import Document
 from vyper.compiler import CompilerData
 from vyper.exceptions import VyperException
 
 from .parse import parser
+import re
 
+pattern = r"(.+) is deprecated\. Please use `(.+)` instead\."
+compiled_pattern = re.compile(pattern)
 
 def format_parse_error(e):
     if isinstance(e, UnexpectedToken):
@@ -14,7 +20,8 @@ def format_parse_error(e):
         return str(e)
 
 
-def get_diagnostics(doctext: str):
+def get_diagnostics(doc: Document):
+    doctext = doc.source
     diagnostics: List[Diagnostic] = []
     last_error = None
 
@@ -52,30 +59,59 @@ def get_diagnostics(doctext: str):
 
     compiler_data = CompilerData(doctext)
 
-    try:
-        compiler_data.vyper_module_unfolded
-    except VyperException as e:
-        if e.lineno is not None and e.col_offset is not None:
-            diagnostics.append(
-                Diagnostic(
-                    range=Range(
-                        start=Position(line=e.lineno - 1, character=e.col_offset - 1),
-                        end=Position(line=e.lineno - 1, character=e.col_offset),
-                    ),
-                    message=str(e),
-                )
-            )
-        else:
-            for a in e.annotations:
+    warnings.simplefilter("always")
+    replacements = {}
+    with warnings.catch_warnings(record=True) as w:
+        try:
+            compiler_data.vyper_module_unfolded
+        except VyperException as e:
+            if e.lineno is not None and e.col_offset is not None:
                 diagnostics.append(
                     Diagnostic(
                         range=Range(
-                            start=Position(
-                                line=a.lineno - 1, character=a.col_offset - 1
-                            ),
-                            end=Position(line=a.lineno - 1, character=a.col_offset),
+                            start=Position(line=e.lineno - 1, character=e.col_offset - 1),
+                            end=Position(line=e.lineno - 1, character=e.col_offset),
                         ),
-                        message=e.message,
+                        message=str(e),
+                        severity=1,
+                    )
+                )
+            else:
+                for a in e.annotations:
+                    diagnostics.append(
+                        Diagnostic(
+                            range=Range(
+                                start=Position(
+                                    line=a.lineno - 1, character=a.col_offset - 1
+                                ),
+                                end=Position(line=a.lineno - 1, character=a.col_offset),
+                            ),
+                            message=e.message,
+                            severity=1,
+                        )
+                    )
+        print(f"{len(w)} warnings", file=sys.stderr)
+        for warning in w:
+            match = compiled_pattern.match(str(warning.message))
+            if not match:
+                continue
+            deprecated = match.group(1)
+            replacement = match.group(2)
+            replacements[deprecated] = replacement
+
+    # iterate over doc.lines and find all deprecated values
+    # and create a warning for each one at the correct position
+    for i, line in enumerate(doc.lines):
+        for deprecated, replacement in replacements.items():
+            if deprecated in line:
+                diagnostics.append(
+                    Diagnostic(
+                        range=Range(
+                            start=Position(line=i, character=line.index(deprecated)),
+                            end=Position(line=i, character=line.index(deprecated) + len(deprecated)),
+                        ),
+                        message=f"{deprecated} is deprecated. Please use {replacement} instead.",
+                        severity=2,
                     )
                 )
 
