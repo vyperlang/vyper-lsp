@@ -1,3 +1,4 @@
+from pygls.lsp.types.language_features import List
 from vyper.ast import nodes
 from vyper.compiler import CompilerData
 
@@ -26,7 +27,32 @@ class AST:
         except Exception:
             pass
 
-    def get_user_defined_type_names(self):
+    def build_ast(self, src: str):
+        try:
+            compiler_data = CompilerData(src)
+            self.ast_data = compiler_data.vyper_module_unfolded
+        except Exception:
+            pass
+
+    def get_enums(self) -> List[str]:
+        if self.ast_data is None:
+            return []
+
+        return [
+            node.name
+            for node in self.ast_data.get_descendants(nodes.EnumDef)
+        ]
+
+    def get_structs(self) -> List[str]:
+        if self.ast_data is None:
+            return []
+
+        return [
+            node.name
+            for node in self.ast_data.get_descendants(nodes.StructDef)
+        ]
+
+    def get_user_defined_types(self):
         if self.ast_data is None:
             return []
 
@@ -44,6 +70,21 @@ class AST:
             return []
 
         return [node.value.id for node in enum_node.get_children()]
+
+    def get_state_variables(self):
+        if self.ast_data is None:
+            return []
+
+        return [
+            node.target.id
+            for node in self.ast_data.get_descendants(nodes.VariableDecl)
+        ]
+
+    def find_nodes_referencing_state_variable(self, variable: str):
+        if self.ast_data is None:
+            return []
+
+        return self.ast_data.get_descendants(nodes.Attribute, {"value.id": "self", "attr": variable})
 
     def get_attributes_for_symbol(self, symbol: str):
         if self.ast_data is None:
@@ -73,3 +114,39 @@ class AST:
                         return variant
 
         return None
+
+    def find_nodes_referencing_enum(self, enum: str):
+        if self.ast_data is None:
+            return []
+
+        return_nodes = []
+
+        for node in self.ast_data.get_descendants(nodes.AnnAssign, {"annotation.id": enum}):
+            return_nodes.append(node)
+        for node in self.ast_data.get_descendants(nodes.Attribute, {"value.id": enum}):
+            return_nodes.append(node)
+        for node in self.ast_data.get_descendants(nodes.VariableDecl, {"annotation.id": enum}):
+            return_nodes.append(node)
+
+        return return_nodes
+
+    def find_nodes_referencing_enum_variant(self, enum: str, variant: str):
+        if self.ast_data is None:
+            return None
+
+        return self.ast_data.get_descendants(nodes.Attribute, {"attr": variant, "value.id": enum})
+
+    def find_nodes_referencing_struct(self, struct: str):
+        if self.ast_data is None:
+            return []
+
+        return_nodes = []
+
+        for node in self.ast_data.get_descendants(nodes.AnnAssign, {"annotation.id": struct}):
+            return_nodes.append(node)
+        for node in self.ast_data.get_descendants(nodes.Call, {"func.id": struct}):
+            return_nodes.append(node)
+        for node in self.ast_data.get_descendants(nodes.VariableDecl, {"annotation.id": struct}):
+            return_nodes.append(node)
+
+        return return_nodes
