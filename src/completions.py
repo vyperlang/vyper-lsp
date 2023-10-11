@@ -24,7 +24,7 @@ class Completer:
         document = ls.workspace.get_document(params.text_document.uri)
         og_line = document.lines[params.position.line]
         current_line = document.lines[params.position.line].strip()
-        custom_types = self.ast.get_user_defined_type_names()
+        custom_types = self.ast.get_user_defined_types()
 
         if params.context:
             if params.context.trigger_character == ".":
