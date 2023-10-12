@@ -1,3 +1,4 @@
+import re
 import sys
 from pygls.lsp.types.language_features import Location, Position, Range
 from typing import List, Optional
@@ -23,8 +24,8 @@ class Navigator:
             )
             return range
 
-    def find_internal_function_declaration(self, word: str) -> Optional[Range]:
-        node = self.ast.find_internal_function_declaration_node(word)
+    def find_function_declaration(self, word: str) -> Optional[Range]:
+        node = self.ast.find_function_declaration_node_for_name(word)
         if node:
             range = Range(
                 start=Position(line=node.lineno - 1, character=node.col_offset),
@@ -40,7 +41,6 @@ class Navigator:
                 end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
             )
             return range
-
 
     def find_references(self, doc: Document, pos: Position) -> List[Range]:
         print("finding references!!!!", file=sys.stderr)
@@ -91,10 +91,11 @@ class Navigator:
         og_line = document.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
+        range = None
 
         if full_word.startswith("self."):
             if "(" in full_word:
-                range = self.find_internal_function_declaration(word)
+                range = self.find_function_declaration(word)
             else:
                 range = self.find_state_variable_declaration(word)
         else:
@@ -103,6 +104,70 @@ class Navigator:
             elif word in self.ast.get_constants():
                 range = self.find_state_variable_declaration(word)
             else:
-                return None
+                # check if full_word matches "enum.variant" regex
+                pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)"
+                match = re.match(pattern, full_word)
+                if match:
+                    enum_name = match.group(1)
+                    variant_name = match.group(2)
+                    if enum_name in self.ast.get_enums():
+                        variants = self.ast.get_enum_variants(enum_name)
+                        if variant_name in variants:
+                            range = self.find_type_declaration(enum_name)
         if range:
             return range
+
+    def find_implementation(self, document: Document, pos: Position) -> Optional[Range]:
+        og_line = document.lines[pos.line]
+        word = get_word_at_cursor(og_line, pos.character)
+        expression = get_expression_at_cursor(og_line, pos.character)
+
+        if not "(" in expression:
+            return None
+
+        if expression.startswith("self."):
+            return self.find_function_declaration(word)
+        elif og_line[0].isspace() and og_line.strip().startswith("def"):
+            # only lookup external fns if we're in an interface def
+            return self.find_function_declaration(word)
+        else:
+            return None
+
+
+    def get_hover_info(self, document: Document, pos: Position) -> Optional[str]:
+        og_line = document.lines[pos.line]
+        word = get_word_at_cursor(og_line, pos.character)
+        full_word = get_expression_at_cursor(og_line, pos.character)
+
+        if full_word.startswith("self."):
+            if "(" in full_word:
+                node = self.ast.find_function_declaration_node_for_name(word)
+                if node:
+                    fn_name = node.name
+                    arg_str = ", ".join([f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args])
+                    return f"(Internal Function) **{fn_name}**({arg_str})"
+            else:
+                node = self.ast.find_state_variable_declaration_node(word)
+                if node:
+                    variable_type = node.annotation.id
+                    return f"(State Variable) **{word}** : **{variable_type}**"
+        else:
+            if word in self.ast.get_structs():
+                node = self.ast.find_type_declaration_node(word)
+                if node:
+                    return f"(Struct) **{word}**"
+            elif word in self.ast.get_enums():
+                node = self.ast.find_type_declaration_node(word)
+                if node:
+                    return f"(Enum) **{word}**"
+            elif word in self.ast.get_events():
+                node = self.ast.find_type_declaration_node(word)
+                if node:
+                    return f"(Event) **{word}**"
+            elif word in self.ast.get_constants():
+                node = self.ast.find_state_variable_declaration_node(word)
+                if node:
+                    variable_type = node.annotation.id
+                    return f"(Constant) **{word}** : **{variable_type}**"
+            else:
+                return None

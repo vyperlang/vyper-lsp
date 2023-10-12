@@ -152,12 +152,14 @@ class AST:
         else:
             return []
 
-    def find_internal_function_declaration_node(self, function: str):
+    def find_function_declaration_node_for_name(self, function: str):
         if self.ast_data is None:
             return None
 
         for node in self.ast_data.get_descendants(nodes.FunctionDef):
-            if node.name == function:
+            name_match = node.name == function
+            not_interface_declaration = not isinstance(node.get_ancestor(), nodes.InterfaceDef)
+            if name_match and not_interface_declaration:
                 return node
 
         return None

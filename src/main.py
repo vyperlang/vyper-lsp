@@ -5,8 +5,9 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DID_OPEN,
     TEXT_DOCUMENT_DECLARATION,
     TEXT_DOCUMENT_DEFINITION,
-    TEXT_DOCUMENT_REFERENCES
+    TEXT_DOCUMENT_REFERENCES,
 )
+from pygls.lsp.methods import HOVER, IMPLEMENTATION
 from pygls.lsp.types import (
     CompletionOptions,
     CompletionParams,
@@ -17,15 +18,17 @@ from pygls.lsp.types.language_features import (
     CompletionList,
     DeclarationParams,
     DefinitionParams,
+    HoverParams,
     List,
     Location,
+    Hover
 )
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 
 from src.completions import Completer
 from src.navigation import Navigator
-from src.utils import extract_enum_name
+from src.utils import extract_enum_name, get_word_at_cursor
 
 from .ast import AST
 from .diagnostics import get_diagnostics
@@ -89,6 +92,20 @@ def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Locati
         Location(uri=params.text_document.uri, range=range)
         for range in navigator.find_references(document, params.position)
     ]
+
+@server.feature(HOVER)
+def hover(ls: LanguageServer, params: HoverParams):
+    document = ls.workspace.get_document(params.text_document.uri)
+    hover_info = navigator.get_hover_info(document, params.position)
+    if hover_info:
+        return Hover(contents=hover_info, range=None)
+
+@server.feature(IMPLEMENTATION)
+def implementation(ls: LanguageServer, params: DefinitionParams):
+    document = ls.workspace.get_document(params.text_document.uri)
+    range = navigator.find_implementation(document, params.position)
+    if range:
+        return Location(uri=params.text_document.uri, range=range)
 
 
 def main():
