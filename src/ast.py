@@ -1,6 +1,6 @@
 import sys
 from pygls.lsp.types.language_features import List
-from vyper.ast import nodes
+from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 
 ast = None
@@ -118,6 +118,13 @@ class AST:
             return []
 
         return self.ast_data.get_descendants(nodes.Attribute, {"value.id": "self", "attr": variable})
+
+    def find_nodes_referencing_constant(self, constant: str):
+        if self.ast_data is None:
+            return []
+
+        name_nodes = self.ast_data.get_descendants(nodes.Name, {"id": constant})
+        return [node for node in name_nodes if not isinstance(node.get_ancestor(), nodes.VariableDecl)]
 
     def get_attributes_for_symbol(self, symbol: str):
         if self.ast_data is None:

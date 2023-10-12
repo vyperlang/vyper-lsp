@@ -72,7 +72,10 @@ class Navigator:
                 references.append(range)
         elif not og_line[0].isspace() and word in self.ast.get_state_variables():
             print("found state variable", word, file=sys.stderr)
-            refs = self.ast.find_nodes_referencing_state_variable(word)
+            if "constant(" in og_line:
+                refs = self.ast.find_nodes_referencing_constant(word)
+            else:
+                refs = self.ast.find_nodes_referencing_state_variable(word)
             for ref in refs:
                 range = Range(
                     start=Position(line=ref.lineno - 1, character=ref.col_offset),
