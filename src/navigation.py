@@ -98,6 +98,11 @@ class Navigator:
             else:
                 range = self.find_state_variable_declaration(word)
         else:
-            range = self.find_type_declaration(word)
+            if word in self.ast.get_user_defined_types():
+                range = self.find_type_declaration(word)
+            elif word in self.ast.get_constants():
+                range = self.find_state_variable_declaration(word)
+            else:
+                return None
         if range:
             return range

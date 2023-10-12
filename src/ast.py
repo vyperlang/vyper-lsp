@@ -73,6 +73,17 @@ class AST:
             for node in self.ast_data.get_descendants(self.custom_type_node_types)
         ]
 
+    def get_constants(self):
+        if self.ast_data is None:
+            return []
+
+        return [
+            node.target.id
+            for node in self.ast_data.get_descendants(nodes.VariableDecl)
+            if node.is_constant
+        ]
+
+
     def get_enum_variants(self, enum: str):
         if self.ast_data is None:
             return []
