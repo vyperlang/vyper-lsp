@@ -29,7 +29,7 @@ from pygls.workspace import Document
 
 from src.completions import Completer
 from src.navigation import Navigator
-from src.utils import extract_enum_name, get_word_at_cursor
+from src.utils import extract_enum_name, get_expression_at_cursor, get_word_at_cursor
 
 from .ast import AST
 from .diagnostics import get_diagnostics
@@ -68,16 +68,21 @@ def go_to_declaration(ls: LanguageServer, params: DeclarationParams) -> Optional
     document = ls.workspace.get_document(params.text_document.uri)
     og_line = document.lines[params.position.line]
     word = get_word_at_cursor(og_line, params.position.character)
-    range = navigator.find_declaration(word)
+    full_word = get_expression_at_cursor(og_line, params.position.character)
+    if full_word.startswith("self"):
+        range = navigator.find_state_variable_declaration(word)
+    else:
+        range = navigator.find_type_declaration(word)
     if range:
         return Location(uri=params.text_document.uri, range=range)
 
 @server.feature(TEXT_DOCUMENT_DEFINITION)
 def go_to_definition(ls: LanguageServer, params: DefinitionParams) -> Optional[Location]:
+    # TODO: Look for assignment nodes to find definition
     document = ls.workspace.get_document(params.text_document.uri)
     og_line = document.lines[params.position.line]
     word = get_word_at_cursor(og_line, params.position.character)
-    range = navigator.find_declaration(word)
+    range = navigator.find_type_declaration(word)
     if range:
         return Location(uri=params.text_document.uri, range=range)
 

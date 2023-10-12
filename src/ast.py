@@ -65,7 +65,7 @@ class AST:
         if self.ast_data is None:
             return []
 
-        enum_node = self.find_declaration_node(enum)
+        enum_node = self.find_type_declaration_node(enum)
         if enum_node is None:
             return []
 
@@ -90,7 +90,7 @@ class AST:
         if self.ast_data is None:
             return []
 
-        node = self.find_declaration_node(symbol)
+        node = self.find_type_declaration_node(symbol)
         if node is None:
             return []
 
@@ -101,7 +101,17 @@ class AST:
         else:
             return []
 
-    def find_declaration_node(self, symbol: str):
+    def find_state_variable_declaration_node(self, variable: str):
+        if self.ast_data is None:
+            return None
+
+        for node in self.ast_data.get_descendants(nodes.VariableDecl):
+            if node.target.id == variable:
+                return node
+
+        return None
+
+    def find_type_declaration_node(self, symbol: str):
         if self.ast_data is None:
             return None
 

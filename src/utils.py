@@ -49,6 +49,24 @@ def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
 
     return word
 
+def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
+    # does the same thing as get_word_at_cursor but includes . and [ and ] in the expression
+    start = cursor_index
+    end = cursor_index
+
+    # Find the start of the word
+    while start > 0 and sentence[start - 1].isalnum() or sentence[start - 1] in ".[]":
+        start -= 1
+
+    # Find the end of the word
+    while end < len(sentence) and sentence[end].isalnum() or sentence[end] in ".[]":
+        end += 1
+
+    # Extract the word
+    word = sentence[start:end]
+
+    return word
+
 def extract_enum_name(line: str):
     match = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
     if match:

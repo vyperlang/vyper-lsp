@@ -13,14 +13,24 @@ class Navigator:
     def __init__(self, ast=None):
         self.ast = ast or AST()
 
-    def find_declaration(self, word: str) -> Optional[Range]:
-        node = self.ast.find_declaration_node(word)
+    def find_state_variable_declaration(self, word: str) -> Optional[Range]:
+        node = self.ast.find_state_variable_declaration_node(word)
         if node:
             range = Range(
                 start=Position(line=node.lineno - 1, character=node.col_offset),
                 end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
             )
             return range
+
+    def find_type_declaration(self, word: str) -> Optional[Range]:
+        node = self.ast.find_type_declaration_node(word)
+        if node:
+            range = Range(
+                start=Position(line=node.lineno - 1, character=node.col_offset),
+                end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+            )
+            return range
+
 
     def find_references(self, word: str, doc: Document, pos: Position) -> List[Range]:
         og_line = doc.lines[pos.line]
