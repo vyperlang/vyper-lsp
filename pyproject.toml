@@ -11,7 +11,7 @@ keywords = [
   "vyper-lsp"
 ]
 packages = [
-  { include = "src" }
+  { include = "vyper_lsp" }
 ]
 
 [tool.poetry.dependencies]
@@ -28,7 +28,7 @@ vyper = "^0.3.10"
 flake8 = "^5.0.4"
 
 [tool.poetry.scripts]
-vyper-lsp = 'src.main:main'
+vyper-lsp = 'vyper_lsp.main:main'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
