@@ -1,4 +1,3 @@
-import sys
 from typing import Optional
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
@@ -16,20 +15,17 @@ from pygls.lsp.types import (
 )
 from pygls.lsp.types.language_features import (
     CompletionList,
-    DeclarationOptions,
     DeclarationParams,
     DefinitionParams,
     List,
     Location,
-    Position,
-    Range,
 )
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 
 from src.completions import Completer
 from src.navigation import Navigator
-from src.utils import extract_enum_name, get_expression_at_cursor, get_word_at_cursor
+from src.utils import extract_enum_name
 
 from .ast import AST
 from .diagnostics import get_diagnostics
@@ -66,13 +62,7 @@ def completions(ls, params: CompletionParams) -> CompletionList:
 @server.feature(TEXT_DOCUMENT_DECLARATION)
 def go_to_declaration(ls: LanguageServer, params: DeclarationParams) -> Optional[Location]:
     document = ls.workspace.get_document(params.text_document.uri)
-    og_line = document.lines[params.position.line]
-    word = get_word_at_cursor(og_line, params.position.character)
-    full_word = get_expression_at_cursor(og_line, params.position.character)
-    if full_word.startswith("self"):
-        range = navigator.find_state_variable_declaration(word)
-    else:
-        range = navigator.find_type_declaration(word)
+    range = navigator.find_declaration(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)
 
@@ -80,11 +70,10 @@ def go_to_declaration(ls: LanguageServer, params: DeclarationParams) -> Optional
 def go_to_definition(ls: LanguageServer, params: DefinitionParams) -> Optional[Location]:
     # TODO: Look for assignment nodes to find definition
     document = ls.workspace.get_document(params.text_document.uri)
-    og_line = document.lines[params.position.line]
-    word = get_word_at_cursor(og_line, params.position.character)
-    range = navigator.find_type_declaration(word)
+    range = navigator.find_declaration(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)
+
 
 def get_enum_name(ls: LanguageServer, doc: Document, variant_line_no: int):
     for line_no in range(variant_line_no, 0):
@@ -96,13 +85,10 @@ def get_enum_name(ls: LanguageServer, doc: Document, variant_line_no: int):
 @server.feature(TEXT_DOCUMENT_REFERENCES)
 def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Location]:
     document = ls.workspace.get_document(params.text_document.uri)
-    og_line = document.lines[params.position.line]
-    word = get_word_at_cursor(og_line, params.position.character)
-    reference_ranges = navigator.find_references(word, document, params.position)
-    references = []
-    for range in reference_ranges:
-        references.append(Location(uri=params.text_document.uri, range=range))
-    return references
+    return [
+        Location(uri=params.text_document.uri, range=range)
+        for range in navigator.find_references(document, params.position)
+    ]
 
 
 def main():

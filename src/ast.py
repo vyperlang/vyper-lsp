@@ -1,3 +1,4 @@
+import sys
 from pygls.lsp.types.language_features import List
 from vyper.ast import nodes
 from vyper.compiler import CompilerData
@@ -12,6 +13,7 @@ class AST:
     custom_type_node_types = (
         nodes.StructDef,
         nodes.EnumDef,
+        nodes.EventDef
     )
 
     def __new__(cls):
@@ -24,7 +26,8 @@ class AST:
         try:
             compiler_data = CompilerData(document.source)
             self.ast_data = compiler_data.vyper_module_unfolded
-        except Exception:
+        except Exception as e:
+            print(f"Error updating AST: {e}", file=sys.stderr)
             pass
 
     def build_ast(self, src: str):
@@ -50,6 +53,15 @@ class AST:
         return [
             node.name
             for node in self.ast_data.get_descendants(nodes.StructDef)
+        ]
+
+    def get_events(self) -> List[str]:
+        if self.ast_data is None:
+            return []
+
+        return [
+            node.name
+            for node in self.ast_data.get_descendants(nodes.EventDef)
         ]
 
     def get_user_defined_types(self):
@@ -80,6 +92,27 @@ class AST:
             for node in self.ast_data.get_descendants(nodes.VariableDecl)
         ]
 
+    def get_internal_functions(self):
+        if self.ast_data is None:
+            return []
+
+        function_nodes = self.ast_data.get_descendants(nodes.FunctionDef)
+        inernal_nodes = []
+
+        for node in function_nodes:
+            for decorator in node.decorator_list:
+                if decorator.id == "internal":
+                    inernal_nodes.append(node)
+
+        return inernal_nodes
+
+    def find_nodes_referencing_internal_function(self, function: str):
+        if self.ast_data is None:
+            return []
+
+        return self.ast_data.get_descendants(nodes.Call, {"func.attr": function, "func.value.id": "self"})
+
+
     def find_nodes_referencing_state_variable(self, variable: str):
         if self.ast_data is None:
             return []
@@ -100,6 +133,17 @@ class AST:
             return self.get_enum_variants(symbol)
         else:
             return []
+
+    def find_internal_function_declaration_node(self, function: str):
+        if self.ast_data is None:
+            return None
+
+        for node in self.ast_data.get_descendants(nodes.FunctionDef):
+            if node.name == function:
+                return node
+
+        return None
+
 
     def find_state_variable_declaration_node(self, variable: str):
         if self.ast_data is None:
