@@ -220,5 +220,7 @@ class AST:
             return_nodes.append(node)
         for node in self.ast_data.get_descendants(nodes.VariableDecl, {"annotation.id": struct}):
             return_nodes.append(node)
+        for node in self.ast_data.get_descendants(nodes.FunctionDef, {"returns.id": struct}):
+            return_nodes.append(node)
 
         return return_nodes
