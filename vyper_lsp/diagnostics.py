@@ -63,7 +63,7 @@ def get_diagnostics(doc: Document):
     replacements = {}
     with warnings.catch_warnings(record=True) as w:
         try:
-            compiler_data.vyper_module_unfolded
+            compiler_data.vyper_module
         except VyperException as e:
             if e.lineno is not None and e.col_offset is not None:
                 diagnostics.append(

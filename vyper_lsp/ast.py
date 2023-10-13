@@ -27,14 +27,15 @@ class AST:
             compiler_data = CompilerData(document.source)
             self.ast_data = compiler_data.vyper_module_unfolded
         except Exception as e:
-            print(f"Error updating AST: {e}", file=sys.stderr)
+            print(f"Error generating unfolded AST, {e}")
             pass
 
     def build_ast(self, src: str):
         try:
             compiler_data = CompilerData(src)
             self.ast_data = compiler_data.vyper_module_unfolded
-        except Exception:
+        except Exception as e:
+            print(f"Error generating unfolded AST, {e}")
             pass
 
     def get_enums(self) -> List[str]:
@@ -97,6 +98,8 @@ class AST:
     def get_state_variables(self):
         if self.ast_data is None:
             return []
+
+        print(f"{self.ast_data.get_descendants(nodes.VariableDecl)}", file=sys.stderr)
 
         return [
             node.target.id

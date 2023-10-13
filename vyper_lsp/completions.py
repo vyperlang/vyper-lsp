@@ -7,8 +7,8 @@ from pygls.lsp.types.language_features import (
 )
 from pygls.server import LanguageServer
 
-from src.ast import AST
-from src.types import BASE_TYPES
+from vyper_lsp.ast import AST
+from vyper_lsp.types import BASE_TYPES
 
 DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 

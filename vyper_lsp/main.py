@@ -26,9 +26,9 @@ from pygls.lsp.types.language_features import (
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 
-from src.completions import Completer
-from src.navigation import Navigator
-from src.utils import extract_enum_name, get_word_at_cursor
+from vyper_lsp.completions import Completer
+from vyper_lsp.navigation import Navigator
+from vyper_lsp.utils import extract_enum_name
 
 from .ast import AST
 from .diagnostics import get_diagnostics

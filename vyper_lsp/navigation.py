@@ -4,8 +4,8 @@ from pygls.lsp.types.language_features import Location, Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document
-from src.ast import AST
-from src.utils import get_expression_at_cursor, get_word_at_cursor
+from vyper_lsp.ast import AST
+from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
 # this class should abstract away all the AST stuff
 # and just provide a simple interface for navigation
@@ -43,7 +43,6 @@ class Navigator:
             return range
 
     def find_references(self, doc: Document, pos: Position) -> List[Range]:
-        print("finding references!!!!", file=sys.stderr)
         og_line = doc.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
         if self.ast.ast_data is None:
@@ -51,7 +50,7 @@ class Navigator:
             return []
         references = []
 
-        print("finding references for", word, file=sys.stderr)
+        print(f"state variables: {self.ast.get_state_variables()}", file=sys.stderr)
         if word in self.ast.get_enums():
             # find all references to this type
             refs = self.ast.find_nodes_referencing_enum(word)
