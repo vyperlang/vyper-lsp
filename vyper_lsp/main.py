@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
@@ -25,23 +26,28 @@ from pygls.lsp.types.language_features import (
 )
 from pygls.server import LanguageServer
 from pygls.workspace import Document
+from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
+from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 
 from vyper_lsp.completions import Completer
 from vyper_lsp.navigation import Navigator
 from vyper_lsp.utils import extract_enum_name
 
 from .ast import AST
-from .diagnostics import get_diagnostics
 
 server = LanguageServer("vyper", "v0.0.1")
 completer = Completer()
 navigator = Navigator()
+ast_analyzer = AstAnalyzer()
+source_analyzer = SourceAnalyzer()
+
 ast = AST()
 
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
-    diagnostics = get_diagnostics(text_doc)
-    ls.publish_diagnostics(params.text_document.uri, diagnostics)
+    source_diagnostics = source_analyzer.get_diagnostics(text_doc)
+    ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
+    ls.publish_diagnostics(params.text_document.uri, source_diagnostics + ast_diagnostics)
     ast.update_ast(text_doc)
 
 
@@ -96,7 +102,7 @@ def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Locati
 @server.feature(HOVER)
 def hover(ls: LanguageServer, params: HoverParams):
     document = ls.workspace.get_document(params.text_document.uri)
-    hover_info = navigator.get_hover_info(document, params.position)
+    hover_info = ast_analyzer.hover_info(document, params.position)
     if hover_info:
         return Hover(contents=hover_info, range=None)
 
