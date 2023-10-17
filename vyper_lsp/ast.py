@@ -1,6 +1,6 @@
 import sys
 from pygls.lsp.types.language_features import List
-from vyper.ast import VyperNode, nodes
+from vyper.ast import nodes
 from vyper.compiler import CompilerData
 
 ast = None

@@ -12,7 +12,7 @@ from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 # and just provide a simple interface for navigation
 #
 # the navigator should mainly return Ranges
-class Navigator:
+class ASTNavigator:
     def __init__(self, ast=None):
         self.ast = ast or AST()
 
@@ -47,11 +47,9 @@ class Navigator:
         og_line = doc.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
         if self.ast.ast_data is None:
-            print("ast data is none", file=sys.stderr)
             return []
         references = []
 
-        print(f"state variables: {self.ast.get_state_variables()}", file=sys.stderr)
         if word in self.ast.get_enums():
             # find all references to this type
             refs = self.ast.find_nodes_referencing_enum(word)
@@ -62,7 +60,6 @@ class Navigator:
                 )
                 references.append(range)
         elif word in self.ast.get_structs() or word in self.ast.get_events():
-            print("found struct or event", word, file=sys.stderr)
             refs = self.ast.find_nodes_referencing_struct(word)
             for ref in refs:
                 range = Range(
@@ -71,7 +68,6 @@ class Navigator:
                 )
                 references.append(range)
         elif not og_line[0].isspace() and word in self.ast.get_state_variables():
-            print("found state variable", word, file=sys.stderr)
             if "constant(" in og_line:
                 refs = self.ast.find_nodes_referencing_constant(word)
             else:

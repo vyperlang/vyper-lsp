@@ -1,4 +1,3 @@
-import sys
 from typing import Optional
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
@@ -30,19 +29,18 @@ from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 
 from vyper_lsp.completer.completer import Completer
-from vyper_lsp.navigation import Navigator
+from vyper_lsp.navigation import ASTNavigator
 from vyper_lsp.utils import extract_enum_name
 
 from .ast import AST
 
 server = LanguageServer("vyper", "v0.0.1")
 completer = Completer()
-navigator = Navigator()
+navigator = ASTNavigator()
 ast_analyzer = AstAnalyzer()
 source_analyzer = SourceAnalyzer()
 
 ast = AST()
-
 
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
