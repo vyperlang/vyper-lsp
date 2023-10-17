@@ -7,12 +7,13 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DEFINITION,
     TEXT_DOCUMENT_REFERENCES,
 )
-from pygls.lsp.methods import HOVER, IMPLEMENTATION
+from pygls.lsp.methods import HOVER, IMPLEMENTATION, TEXT_DOCUMENT_DID_SAVE
 from pygls.lsp.types import (
     CompletionOptions,
     CompletionParams,
     DidChangeTextDocumentParams,
     DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams,
 )
 from pygls.lsp.types.language_features import (
     CompletionList,
@@ -45,7 +46,8 @@ ast = AST()
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
     source_diagnostics = source_analyzer.get_diagnostics(text_doc)
-    ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
+    # ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
+    ast_diagnostics = []
     ls.publish_diagnostics(
         params.text_document.uri, source_diagnostics + ast_diagnostics
     )
@@ -54,11 +56,19 @@ def validate_doc(ls, params):
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
 async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
+    doc: Document = ls.workspace.get_document(params.text_document.uri)
+    version_pragma = source_analyzer.get_version_pragma(doc)
+    ls.show_message(f"Version pragma: {version_pragma}")
     validate_doc(ls, params)
 
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 async def did_change(ls: LanguageServer, params: DidChangeTextDocumentParams):
+    # validate_doc(ls, params)
+    pass
+
+@server.feature(TEXT_DOCUMENT_DID_SAVE)
+async def did_save(ls: LanguageServer, params: DidSaveTextDocumentParams):
     validate_doc(ls, params)
 
 

@@ -1,3 +1,7 @@
+# @version 0.3.9
+
+x: constant(uint256) = "hi"
+
 event Foo:
     arg1: uint256
     arg2: address
