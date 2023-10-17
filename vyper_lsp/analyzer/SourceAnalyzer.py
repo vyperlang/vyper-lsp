@@ -131,7 +131,10 @@ class SourceAnalyzer(Analyzer):
                 # will appear in the text as `line x:y`
                 regex = re.compile(r"line (\d+):(\d+)")
                 match = regex.search(e.stderr_data)
-                if match:
+
+                type_regex = re.compile(r"vyper\.exceptions\.([a-zA-Z]+): (.*)\n")
+                type_match = type_regex.search(e.stderr_data)
+                if match and type_match:
                     diagnostics.append(
                         Diagnostic(
                             range=Range(
@@ -144,7 +147,7 @@ class SourceAnalyzer(Analyzer):
                                     character=int(match.group(2)),
                                 ),
                             ),
-                            message=str(e),
+                            message=f"{type_match.group(1)}: {type_match.group(2)}",
                         )
                     )
         except:

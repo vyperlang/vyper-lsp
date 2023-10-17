@@ -1,6 +1,4 @@
-# @version 0.3.9
-
-x: constant(uint256) = "hi"
+# @version 0.3.10
 
 event Foo:
     arg1: uint256
