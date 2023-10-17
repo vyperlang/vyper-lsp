@@ -22,14 +22,14 @@ from pygls.lsp.types.language_features import (
     HoverParams,
     List,
     Location,
-    Hover
+    Hover,
 )
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 
-from vyper_lsp.completions import Completer
+from vyper_lsp.completer.completer import Completer
 from vyper_lsp.navigation import Navigator
 from vyper_lsp.utils import extract_enum_name
 
@@ -43,11 +43,14 @@ source_analyzer = SourceAnalyzer()
 
 ast = AST()
 
+
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
     source_diagnostics = source_analyzer.get_diagnostics(text_doc)
     ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
-    ls.publish_diagnostics(params.text_document.uri, source_diagnostics + ast_diagnostics)
+    ls.publish_diagnostics(
+        params.text_document.uri, source_diagnostics + ast_diagnostics
+    )
     ast.update_ast(text_doc)
 
 
@@ -69,14 +72,19 @@ def completions(ls, params: CompletionParams) -> CompletionList:
 
 
 @server.feature(TEXT_DOCUMENT_DECLARATION)
-def go_to_declaration(ls: LanguageServer, params: DeclarationParams) -> Optional[Location]:
+def go_to_declaration(
+    ls: LanguageServer, params: DeclarationParams
+) -> Optional[Location]:
     document = ls.workspace.get_document(params.text_document.uri)
     range = navigator.find_declaration(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)
 
+
 @server.feature(TEXT_DOCUMENT_DEFINITION)
-def go_to_definition(ls: LanguageServer, params: DefinitionParams) -> Optional[Location]:
+def go_to_definition(
+    ls: LanguageServer, params: DefinitionParams
+) -> Optional[Location]:
     # TODO: Look for assignment nodes to find definition
     document = ls.workspace.get_document(params.text_document.uri)
     range = navigator.find_declaration(document, params.position)
@@ -91,6 +99,7 @@ def get_enum_name(ls: LanguageServer, doc: Document, variant_line_no: int):
         if enum_name:
             return enum_name
 
+
 @server.feature(TEXT_DOCUMENT_REFERENCES)
 def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Location]:
     document = ls.workspace.get_document(params.text_document.uri)
@@ -99,12 +108,14 @@ def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Locati
         for range in navigator.find_references(document, params.position)
     ]
 
+
 @server.feature(HOVER)
 def hover(ls: LanguageServer, params: HoverParams):
     document = ls.workspace.get_document(params.text_document.uri)
     hover_info = ast_analyzer.hover_info(document, params.position)
     if hover_info:
         return Hover(contents=hover_info, range=None)
+
 
 @server.feature(IMPLEMENTATION)
 def implementation(ls: LanguageServer, params: DefinitionParams):

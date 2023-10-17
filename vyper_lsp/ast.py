@@ -10,11 +10,7 @@ class AST:
     _instance = None
     ast_data = None
 
-    custom_type_node_types = (
-        nodes.StructDef,
-        nodes.EnumDef,
-        nodes.EventDef
-    )
+    custom_type_node_types = (nodes.StructDef, nodes.EnumDef, nodes.EventDef)
 
     def __new__(cls):
         if cls._instance is None:
@@ -42,28 +38,19 @@ class AST:
         if self.ast_data is None:
             return []
 
-        return [
-            node.name
-            for node in self.ast_data.get_descendants(nodes.EnumDef)
-        ]
+        return [node.name for node in self.ast_data.get_descendants(nodes.EnumDef)]
 
     def get_structs(self) -> List[str]:
         if self.ast_data is None:
             return []
 
-        return [
-            node.name
-            for node in self.ast_data.get_descendants(nodes.StructDef)
-        ]
+        return [node.name for node in self.ast_data.get_descendants(nodes.StructDef)]
 
     def get_events(self) -> List[str]:
         if self.ast_data is None:
             return []
 
-        return [
-            node.name
-            for node in self.ast_data.get_descendants(nodes.EventDef)
-        ]
+        return [node.name for node in self.ast_data.get_descendants(nodes.EventDef)]
 
     def get_user_defined_types(self):
         if self.ast_data is None:
@@ -84,7 +71,6 @@ class AST:
             if node.is_constant
         ]
 
-
     def get_enum_variants(self, enum: str):
         if self.ast_data is None:
             return []
@@ -102,8 +88,7 @@ class AST:
         print(f"{self.ast_data.get_descendants(nodes.VariableDecl)}", file=sys.stderr)
 
         return [
-            node.target.id
-            for node in self.ast_data.get_descendants(nodes.VariableDecl)
+            node.target.id for node in self.ast_data.get_descendants(nodes.VariableDecl)
         ]
 
     def get_internal_functions(self):
@@ -124,21 +109,28 @@ class AST:
         if self.ast_data is None:
             return []
 
-        return self.ast_data.get_descendants(nodes.Call, {"func.attr": function, "func.value.id": "self"})
-
+        return self.ast_data.get_descendants(
+            nodes.Call, {"func.attr": function, "func.value.id": "self"}
+        )
 
     def find_nodes_referencing_state_variable(self, variable: str):
         if self.ast_data is None:
             return []
 
-        return self.ast_data.get_descendants(nodes.Attribute, {"value.id": "self", "attr": variable})
+        return self.ast_data.get_descendants(
+            nodes.Attribute, {"value.id": "self", "attr": variable}
+        )
 
     def find_nodes_referencing_constant(self, constant: str):
         if self.ast_data is None:
             return []
 
         name_nodes = self.ast_data.get_descendants(nodes.Name, {"id": constant})
-        return [node for node in name_nodes if not isinstance(node.get_ancestor(), nodes.VariableDecl)]
+        return [
+            node
+            for node in name_nodes
+            if not isinstance(node.get_ancestor(), nodes.VariableDecl)
+        ]
 
     def get_attributes_for_symbol(self, symbol: str):
         if self.ast_data is None:
@@ -161,12 +153,13 @@ class AST:
 
         for node in self.ast_data.get_descendants(nodes.FunctionDef):
             name_match = node.name == function
-            not_interface_declaration = not isinstance(node.get_ancestor(), nodes.InterfaceDef)
+            not_interface_declaration = not isinstance(
+                node.get_ancestor(), nodes.InterfaceDef
+            )
             if name_match and not_interface_declaration:
                 return node
 
         return None
-
 
     def find_state_variable_declaration_node(self, variable: str):
         if self.ast_data is None:
@@ -198,11 +191,15 @@ class AST:
 
         return_nodes = []
 
-        for node in self.ast_data.get_descendants(nodes.AnnAssign, {"annotation.id": enum}):
+        for node in self.ast_data.get_descendants(
+            nodes.AnnAssign, {"annotation.id": enum}
+        ):
             return_nodes.append(node)
         for node in self.ast_data.get_descendants(nodes.Attribute, {"value.id": enum}):
             return_nodes.append(node)
-        for node in self.ast_data.get_descendants(nodes.VariableDecl, {"annotation.id": enum}):
+        for node in self.ast_data.get_descendants(
+            nodes.VariableDecl, {"annotation.id": enum}
+        ):
             return_nodes.append(node)
 
         return return_nodes
@@ -211,7 +208,9 @@ class AST:
         if self.ast_data is None:
             return None
 
-        return self.ast_data.get_descendants(nodes.Attribute, {"attr": variant, "value.id": enum})
+        return self.ast_data.get_descendants(
+            nodes.Attribute, {"attr": variant, "value.id": enum}
+        )
 
     def find_nodes_referencing_struct(self, struct: str):
         if self.ast_data is None:
@@ -219,13 +218,19 @@ class AST:
 
         return_nodes = []
 
-        for node in self.ast_data.get_descendants(nodes.AnnAssign, {"annotation.id": struct}):
+        for node in self.ast_data.get_descendants(
+            nodes.AnnAssign, {"annotation.id": struct}
+        ):
             return_nodes.append(node)
         for node in self.ast_data.get_descendants(nodes.Call, {"func.id": struct}):
             return_nodes.append(node)
-        for node in self.ast_data.get_descendants(nodes.VariableDecl, {"annotation.id": struct}):
+        for node in self.ast_data.get_descendants(
+            nodes.VariableDecl, {"annotation.id": struct}
+        ):
             return_nodes.append(node)
-        for node in self.ast_data.get_descendants(nodes.FunctionDef, {"returns.id": struct}):
+        for node in self.ast_data.get_descendants(
+            nodes.FunctionDef, {"returns.id": struct}
+        ):
             return_nodes.append(node)
 
         return return_nodes

@@ -13,9 +13,9 @@ from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 pattern = r"(.+) is deprecated\. Please use `(.+)` instead\."
 compiled_pattern = re.compile(pattern)
 
-class AstAnalyzer(Analyzer):
 
-    def __init__(self, ast = None) -> None:
+class AstAnalyzer(Analyzer):
+    def __init__(self, ast=None) -> None:
         super().__init__()
         self.ast = ast or AST()
 
@@ -29,7 +29,9 @@ class AstAnalyzer(Analyzer):
                 node = self.ast.find_function_declaration_node_for_name(word)
                 if node:
                     fn_name = node.name
-                    arg_str = ", ".join([f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args])
+                    arg_str = ", ".join(
+                        [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
+                    )
                     return f"(Internal Function) **{fn_name}**({arg_str})"
             else:
                 node = self.ast.find_state_variable_declaration_node(word)
@@ -74,7 +76,9 @@ class AstAnalyzer(Analyzer):
                     diagnostics.append(
                         Diagnostic(
                             range=Range(
-                                start=Position(line=e.lineno - 1, character=e.col_offset - 1),
+                                start=Position(
+                                    line=e.lineno - 1, character=e.col_offset - 1
+                                ),
                                 end=Position(line=e.lineno - 1, character=e.col_offset),
                             ),
                             message=str(e),
@@ -89,7 +93,9 @@ class AstAnalyzer(Analyzer):
                                     start=Position(
                                         line=a.lineno - 1, character=a.col_offset - 1
                                     ),
-                                    end=Position(line=a.lineno - 1, character=a.col_offset),
+                                    end=Position(
+                                        line=a.lineno - 1, character=a.col_offset
+                                    ),
                                 ),
                                 message=e.message,
                                 severity=1,
@@ -111,8 +117,13 @@ class AstAnalyzer(Analyzer):
                     diagnostics.append(
                         Diagnostic(
                             range=Range(
-                                start=Position(line=i, character=line.index(deprecated)),
-                                end=Position(line=i, character=line.index(deprecated) + len(deprecated)),
+                                start=Position(
+                                    line=i, character=line.index(deprecated)
+                                ),
+                                end=Position(
+                                    line=i,
+                                    character=line.index(deprecated) + len(deprecated),
+                                ),
                             ),
                             message=f"{deprecated} is deprecated. Please use {replacement} instead.",
                             severity=2,

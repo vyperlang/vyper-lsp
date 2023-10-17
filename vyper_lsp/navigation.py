@@ -7,6 +7,7 @@ from pygls.workspace import Document
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
+
 # this class should abstract away all the AST stuff
 # and just provide a simple interface for navigation
 #

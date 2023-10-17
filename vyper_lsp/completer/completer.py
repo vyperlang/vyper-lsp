@@ -1,5 +1,3 @@
-import sys
-
 from pygls.lsp.types.language_features import (
     CompletionItem,
     CompletionList,
@@ -8,7 +6,16 @@ from pygls.lsp.types.language_features import (
 from pygls.server import LanguageServer
 
 from vyper_lsp.ast import AST
-from vyper_lsp.types import BASE_TYPES
+
+# Available base types
+UNSIGNED_INTEGER_TYPES = {f"uint{8*(i+1)}" for i in range(32)}
+SIGNED_INTEGER_TYPES = {f"int{8*(i+1)}" for i in range(32)}
+INTEGER_TYPES = UNSIGNED_INTEGER_TYPES | SIGNED_INTEGER_TYPES
+
+BYTES_M_TYPES = {f"bytes{i+1}" for i in range(32)}
+DECIMAL_TYPES = {"decimal"}
+
+BASE_TYPES = INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES | {"bool", "address"}
 
 DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
@@ -22,7 +29,6 @@ class Completer:
     ) -> CompletionList:
         items = []
         document = ls.workspace.get_document(params.text_document.uri)
-        og_line = document.lines[params.position.line]
         current_line = document.lines[params.position.line].strip()
         custom_types = self.ast.get_user_defined_types()
 
@@ -51,7 +57,6 @@ class Completer:
             else:
                 if params.context.trigger_character == " ":
                     if current_line[-1] == ":":
-                        print("triggered type", file=sys.stderr)
                         for typ in custom_types + list(BASE_TYPES):
                             items.append(CompletionItem(label=typ))
 
@@ -59,11 +64,5 @@ class Completer:
                         l.add_items(items)
                         return l
 
-                print(
-                    f"unknown trigger character {params.context.trigger_character}",
-                    file=sys.stderr,
-                )
         else:
-            print("no context", file=sys.stderr)
-            print(params, file=sys.stderr)
-        return CompletionList(is_incomplete=False, items=[])
+            return CompletionList(is_incomplete=False, items=[])

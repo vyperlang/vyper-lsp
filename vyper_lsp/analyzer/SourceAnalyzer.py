@@ -17,6 +17,7 @@ GRAMMAR = GRAMMAR_FILE_PATH.read_text()
 
 parser = Lark(GRAMMAR, parser="lalr", start="module", postlex=PythonIndenter())
 
+
 def format_parse_error(e):
     if isinstance(e, UnexpectedToken):
         expected = ", ".join(e.accepts or e.expected)
@@ -24,8 +25,8 @@ def format_parse_error(e):
     else:
         return str(e)
 
-class SourceAnalyzer(Analyzer):
 
+class SourceAnalyzer(Analyzer):
     def hover_info(self, doc: Document, pos: Position) -> Optional[str]:
         return None
 

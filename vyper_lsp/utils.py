@@ -49,6 +49,7 @@ def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
 
     return word
 
+
 def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     # does the same thing as get_word_at_cursor but includes . and [ and ] in the expression
     start = cursor_index
@@ -66,6 +67,7 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     word = sentence[start:end]
 
     return word
+
 
 def extract_enum_name(line: str):
     match = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
