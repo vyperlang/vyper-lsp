@@ -48,6 +48,10 @@ def extract_version_pragma(line: str) -> Optional[str]:
 
 class SourceAnalyzer(Analyzer):
 
+    def __init__(self) -> None:
+        self.parser_enabled = True
+        self.compiler_enabled = False
+
     def get_version_pragma(self, doc: Document) -> Optional[str]:
         doc_lines = doc.lines
         for line in doc_lines:
@@ -57,7 +61,7 @@ class SourceAnalyzer(Analyzer):
     def hover_info(self, doc: Document, pos: Position) -> Optional[str]:
         return None
 
-    def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
+    def get_parser_diagnostics(self, doc: Document) -> List[Diagnostic]:
         diagnostics = []
         last_error = None
 
@@ -93,6 +97,11 @@ class SourceAnalyzer(Analyzer):
             # ignore errors that are already handled by on_error
             pass
 
+        return diagnostics
+
+    def get_compiler_diagnostics(self, doc: Document) -> List[Diagnostic]:
+        diagnostics = []
+
         # now compile via vvm to get semantic errors
         try:
             vvm.compile_source(doc.source)
@@ -114,17 +123,13 @@ class SourceAnalyzer(Analyzer):
                 elif re.match(r"^\d+\.\d+\.\d+$", version_pragma):
                     # version pragma is just a version, so we just install it
                     version: Version = Version(version_pragma)
-                    print(f"Installing vyper version {version}", file=sys.stderr)
                     vvm.install_vyper(version)
-                    print("Installed vyper version", file=sys.stderr)
                     vvm.set_vyper_version(version)
                 else:
                     specifier: Specifier = Specifier(version_pragma)
                     for version in vvm.get_installable_vyper_versions():
                         if specifier.contains(version):
-                            print(f"Installing vyper version {version}", file=sys.stderr)
                             vvm.install_vyper(version)
-                            print("Installed vyper version", file=sys.stderr)
                             vvm.set_vyper_version(version)
             else:
                 # find the line and number of the error
@@ -153,4 +158,12 @@ class SourceAnalyzer(Analyzer):
         except:
             print("got unknown exception", file=sys.stderr)
 
+        return diagnostics
+
+    def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
+        diagnostics = []
+        if self.parser_enabled:
+            diagnostics.extend(self.get_parser_diagnostics(doc))
+        if self.compiler_enabled:
+            diagnostics.extend(self.get_compiler_diagnostics(doc))
         return diagnostics

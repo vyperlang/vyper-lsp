@@ -71,7 +71,6 @@ class AstAnalyzer(Analyzer):
                 compiler_data = CompilerData(doc.source)
                 compiler_data.vyper_module_folded
             except VyperException as e:
-                print(f"VyperException: {e}", file=sys.stderr)
                 if e.lineno is not None and e.col_offset is not None:
                     diagnostics.append(
                         Diagnostic(

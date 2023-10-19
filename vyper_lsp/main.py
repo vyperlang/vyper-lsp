@@ -51,8 +51,7 @@ ast = AST()
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
     source_diagnostics = source_analyzer.get_diagnostics(text_doc)
-    # ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
-    ast_diagnostics = []
+    ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
     ls.publish_diagnostics(
         params.text_document.uri, source_diagnostics + ast_diagnostics
     )
