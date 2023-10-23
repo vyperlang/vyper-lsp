@@ -1,6 +1,12 @@
 # Vyper LSP Server
 
-## Installation
+## Requirements
+
+Vyper LSP requires a minimum vyper version of 0.3.7. For full support, it is also required that the Vyper version installed in your virtual environment is capable of compiling your contract.
+
+For example, a vyper contract with `#pragma version 0.3.8` cannot be compiled with `0.3.10`, so you must install `vyper==0.3.8` if you want full support while working with this contract.
+
+A contract with `#pragma version >=0.3.8` will work fine with any installed vyper version greater than the requirement, so you can get full support while editing this contract if you have the latest vyper version installed.
 
 ## Install Vyper-LSP
 
@@ -69,6 +75,3 @@ vim.api.nvim_set_keymap('n', ']d', '<Cmd>lua vim.lsp.diagnostic.goto_next()<CR>'
 
 Coming Soon
 
-## Done
-
-Opening any vyper file should result in the LSP server starting up and providing useful information

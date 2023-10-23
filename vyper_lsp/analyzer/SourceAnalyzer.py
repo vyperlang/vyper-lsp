@@ -4,8 +4,9 @@ from typing import List, Optional
 from lark import UnexpectedInput, UnexpectedToken
 from packaging.specifiers import Specifier
 from packaging.version import Version
-from pygls.lsp.types import Diagnostic, Position, Range
+from pygls.lsp.types import CompletionList, CompletionParams, Diagnostic, Position, Range
 from pygls.lsp.types.language_features import on_type_formatting
+from pygls.server import LanguageServer
 from pygls.workspace import Document
 from vvm.exceptions import VyperError
 from vyper.exceptions import VersionException
@@ -31,11 +32,7 @@ def format_parse_error(e):
     else:
         return str(e)
 
-# legacy format was like
-# @version ^0.3.0
 LEGACY_VERSION_PRAGMA_REGEX = re.compile(r"^#\s*@version\s+(.*)$")
-# new format is like
-#pragma version ^0.3.0
 VERSION_PRAGMA_REGEX = re.compile(r"^#pragma\s+version\s+(.*)$")
 
 def extract_version_pragma(line: str) -> Optional[str]:
@@ -167,3 +164,7 @@ class SourceAnalyzer(Analyzer):
         if self.compiler_enabled:
             diagnostics.extend(self.get_compiler_diagnostics(doc))
         return diagnostics
+
+    def get_completions(self, ls: LanguageServer, params: CompletionParams) -> CompletionList:
+        completions: CompletionList = CompletionList(is_incomplete=False, items=[])
+        return completions

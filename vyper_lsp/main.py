@@ -7,6 +7,7 @@ from lsprotocol.types import (
     TEXT_DOCUMENT_DEFINITION,
     TEXT_DOCUMENT_REFERENCES,
 )
+from packaging.version import Version
 from pygls.lsp.methods import HOVER, IMPLEMENTATION, TEXT_DOCUMENT_DID_SAVE
 from pygls.lsp.types import (
     CompletionOptions,
@@ -29,14 +30,12 @@ from pygls.workspace import Document
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 
-from vyper_lsp.completer.completer import Completer
 from vyper_lsp.navigation import ASTNavigator
-from vyper_lsp.utils import extract_enum_name
+from vyper_lsp.utils import extract_enum_name, get_installed_vyper_version
 
 from .ast import AST
 
 server = LanguageServer("vyper", "v0.0.1")
-completer = Completer()
 navigator = ASTNavigator()
 
 # AstAnalyzer is faster and better, but depends on the locally installed vyper version
@@ -44,9 +43,18 @@ navigator = ASTNavigator()
 # or if the version pragma matches the system version. its much faster so we can run it
 # on every keystroke, with sourceanalyzer we should only run it on save
 ast_analyzer = AstAnalyzer()
+completer = ast_analyzer
 source_analyzer = SourceAnalyzer()
 
 ast = AST()
+
+def check_minimum_vyper_version():
+    vy_version = get_installed_vyper_version()
+    min_version = Version("0.3.7")
+    if vy_version < min_version:
+        raise Exception(
+            f"vyper version {vy_version} is not supported, please upgrade to {min_version} or higher"
+        )
 
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
@@ -60,18 +68,17 @@ def validate_doc(ls, params):
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
 async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
+    check_minimum_vyper_version()
     validate_doc(ls, params)
 
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 async def did_change(ls: LanguageServer, params: DidChangeTextDocumentParams):
-    # validate_doc(ls, params)
-    pass
+    validate_doc(ls, params)
 
 @server.feature(TEXT_DOCUMENT_DID_SAVE)
 async def did_save(ls: LanguageServer, params: DidSaveTextDocumentParams):
     validate_doc(ls, params)
-
 
 @server.feature(
     TEXT_DOCUMENT_COMPLETION, CompletionOptions(trigger_characters=[":", ".", "@", " "])
@@ -132,7 +139,6 @@ def implementation(ls: LanguageServer, params: DefinitionParams):
     range = navigator.find_implementation(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)
-
 
 def main():
     server.start_io()

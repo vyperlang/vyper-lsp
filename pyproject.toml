@@ -25,6 +25,7 @@ lsprotocol = "^2023.0.0b1"
 vyper = "^0.3.10"
 vvm = "^0.2.0"
 packaging = "^23.2"
+importlib = "^1.0.4"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^5.0.4"
