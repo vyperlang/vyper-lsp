@@ -39,7 +39,7 @@ This analyzer attempts to compile the current contract via Vyper as a library. T
 - Be capable of compiling this contract according to version requirements
 - Be >= 0.3.7 so we can use the internal APIs our analysis depends on
 
-This Analyzer is a good example of abstracting things away from the Server layer. It operates primarily on ASTs and nodes within it, but should not expose any implementation details about this to the Server layer. 
+This Analyzer is a good example of abstracting things away from the Server layer. It operates primarily on ASTs and nodes within it, but should not expose any implementation details about this to the Server layer.
 
 ### SourceAnalyzer
 

@@ -10,7 +10,7 @@ A contract with `#pragma version >=0.3.8` will work fine with any installed vype
 
 ## Install Vyper-LSP
 
-### via `pipx` 
+### via `pipx`
 I like `pipx` because it handles creating an isolated env for executables and putting them on your path.
 
 `pipx install git+https://github.com/vyperlang/vyper-lsp.git`
@@ -32,7 +32,7 @@ In your terminal, run `which vyper-lsp`. If installation was succesful, you shou
 
 ### Neovim
 
-Add the following to your `neovim` lua config. 
+Add the following to your `neovim` lua config.
 
 It should be at `~/.config/nvim/init.lua`
 
@@ -74,4 +74,3 @@ vim.api.nvim_set_keymap('n', ']d', '<Cmd>lua vim.lsp.diagnostic.goto_next()<CR>'
 ### VS Code
 
 Coming Soon
-

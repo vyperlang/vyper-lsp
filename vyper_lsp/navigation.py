@@ -1,6 +1,6 @@
 import re
 import sys
-from pygls.lsp.types.language_features import Location, Position, Range
+from pygls.lsp.types.language_features import Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document
@@ -89,12 +89,18 @@ class ASTNavigator:
         full_word = get_expression_at_cursor(og_line, pos.character)
         range = None
 
+        print(f"word: {word}", file=sys.stderr)
+
         if full_word.startswith("self."):
             if "(" in full_word:
                 range = self.find_function_declaration(word)
             else:
                 range = self.find_state_variable_declaration(word)
         else:
+            print(
+                f"user defined types: {self.ast.get_user_defined_types()}",
+                file=sys.stderr,
+            )
             if word in self.ast.get_user_defined_types():
                 range = self.find_type_declaration(word)
             elif word in self.ast.get_constants():
@@ -118,7 +124,7 @@ class ASTNavigator:
         word = get_word_at_cursor(og_line, pos.character)
         expression = get_expression_at_cursor(og_line, pos.character)
 
-        if not "(" in expression:
+        if "(" not in expression:
             return None
 
         if expression.startswith("self."):

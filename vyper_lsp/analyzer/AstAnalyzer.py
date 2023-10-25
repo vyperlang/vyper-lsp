@@ -1,4 +1,3 @@
-import sys
 import re
 from typing import List, Optional
 import warnings
@@ -9,7 +8,11 @@ from vyper.compiler import CompilerData
 from vyper.exceptions import VyperException
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
-from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor, get_installed_vyper_version
+from vyper_lsp.utils import (
+    get_expression_at_cursor,
+    get_word_at_cursor,
+    get_installed_vyper_version,
+)
 from pygls.lsp.types.language_features import (
     CompletionItem,
     CompletionList,
@@ -34,8 +37,8 @@ BASE_TYPES = INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES | {"bool", "address"}
 
 DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
-class AstAnalyzer(Analyzer):
 
+class AstAnalyzer(Analyzer):
     def __init__(self, ast=None) -> None:
         super().__init__()
         self.ast = ast or AST()
@@ -58,31 +61,31 @@ class AstAnalyzer(Analyzer):
                 element = current_line.split(" ")[-1].split(".")[0]
                 for attr in self.ast.get_attributes_for_symbol(element):
                     items.append(CompletionItem(label=attr))
-                l = CompletionList(is_incomplete=False, items=[])
-                l.add_items(items)
-                return l
+                completions = CompletionList(is_incomplete=False, items=[])
+                completions.add_items(items)
+                return completions
             elif params.context.trigger_character == "@":
                 for dec in DECORATORS:
                     items.append(CompletionItem(label=dec))
-                l = CompletionList(is_incomplete=False, items=[])
-                l.add_items(items)
-                return l
+                completions = CompletionList(is_incomplete=False, items=[])
+                completions.add_items(items)
+                return completions
             elif params.context.trigger_character == ":":
                 for typ in custom_types + list(BASE_TYPES):
                     items.append(CompletionItem(label=typ, insert_text=f" {typ}"))
 
-                l = CompletionList(is_incomplete=False, items=[])
-                l.add_items(items)
-                return l
+                completions = CompletionList(is_incomplete=False, items=[])
+                completions.add_items(items)
+                return completions
             else:
                 if params.context.trigger_character == " ":
                     if current_line[-1] == ":":
                         for typ in custom_types + list(BASE_TYPES):
                             items.append(CompletionItem(label=typ))
 
-                        l = CompletionList(is_incomplete=False, items=[])
-                        l.add_items(items)
-                        return l
+                        completions = CompletionList(is_incomplete=False, items=[])
+                        completions.add_items(items)
+                        return completions
                 return CompletionList(is_incomplete=False, items=[])
 
         else:

@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "vyper-language-server"
-version = "0.3.0"
+name = "vyper-lsp"
+version = "0.0.1b1"
 description = "Language server for Vyper, a pythonic smart contract language"
 authors = ["z80 <z80@ophy.xyz>"]
 license = "MIT"
@@ -25,10 +25,10 @@ lsprotocol = "^2023.0.0b1"
 vyper = "^0.3.10"
 vvm = "^0.2.0"
 packaging = "^23.2"
-importlib = "^1.0.4"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^5.0.4"
+pre-commit = "^3.5.0"
 
 [tool.poetry.scripts]
 vyper-lsp = 'vyper_lsp.main:main'

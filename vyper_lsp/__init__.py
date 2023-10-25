@@ -1,2 +1,1 @@
-from .main import *
-from .utils import *
+from .main import server  # noqa: F401

@@ -1,15 +1,18 @@
 import re
-import sys
 from typing import List, Optional
 from lark import UnexpectedInput, UnexpectedToken
 from packaging.specifiers import Specifier
 from packaging.version import Version
-from pygls.lsp.types import CompletionList, CompletionParams, Diagnostic, Position, Range
-from pygls.lsp.types.language_features import on_type_formatting
+from pygls.lsp.types import (
+    CompletionList,
+    CompletionParams,
+    Diagnostic,
+    Position,
+    Range,
+)
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 from vvm.exceptions import VyperError
-from vyper.exceptions import VersionException
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 import vvm
 
@@ -32,8 +35,10 @@ def format_parse_error(e):
     else:
         return str(e)
 
+
 LEGACY_VERSION_PRAGMA_REGEX = re.compile(r"^#\s*@version\s+(.*)$")
 VERSION_PRAGMA_REGEX = re.compile(r"^#pragma\s+version\s+(.*)$")
+
 
 def extract_version_pragma(line: str) -> Optional[str]:
     if match := LEGACY_VERSION_PRAGMA_REGEX.match(line):
@@ -43,8 +48,8 @@ def extract_version_pragma(line: str) -> Optional[str]:
     else:
         return None
 
-class SourceAnalyzer(Analyzer):
 
+class SourceAnalyzer(Analyzer):
     def __init__(self) -> None:
         self.parser_enabled = True
         self.compiler_enabled = False
@@ -152,8 +157,8 @@ class SourceAnalyzer(Analyzer):
                             message=f"{type_match.group(1)}: {type_match.group(2)}",
                         )
                     )
-        except:
-            print("got unknown exception", file=sys.stderr)
+        except Exception:
+            pass
 
         return diagnostics
 
@@ -165,6 +170,8 @@ class SourceAnalyzer(Analyzer):
             diagnostics.extend(self.get_compiler_diagnostics(doc))
         return diagnostics
 
-    def get_completions(self, ls: LanguageServer, params: CompletionParams) -> CompletionList:
+    def get_completions(
+        self, ls: LanguageServer, params: CompletionParams
+    ) -> CompletionList:
         completions: CompletionList = CompletionList(is_incomplete=False, items=[])
         return completions

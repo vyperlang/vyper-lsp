@@ -9,6 +9,7 @@ from vyper.compiler import CompilerData
 def get_installed_vyper_version():
     return Version(version("vyper"))
 
+
 def get_source(filepath):
     base_path = Path(__file__).parent.parent
     filepath = base_path / filepath

@@ -1,4 +1,4 @@
-# @version 0.3.10
+# @version ^0.3.8
 
 event Foo:
     arg1: uint256
@@ -26,6 +26,7 @@ def __init__():
     n: Roles = Roles.USER
     self.m = z
     self.n = n
+    a: address = ZERO_ADDRESS
     self.m.x = 1
     log Foo(1, msg.sender)
     log Foo(1, msg.sender)

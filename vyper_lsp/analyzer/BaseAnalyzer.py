@@ -15,5 +15,7 @@ class Analyzer(ABC):
         pass
 
     @abstractmethod
-    def get_completions(self, ls: LanguageServer, params: CompletionParams) -> CompletionList:
+    def get_completions(
+        self, ls: LanguageServer, params: CompletionParams
+    ) -> CompletionList:
         pass
