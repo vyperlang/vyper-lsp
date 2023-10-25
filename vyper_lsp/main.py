@@ -1,3 +1,4 @@
+import argparse
 from typing import Optional
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
@@ -26,12 +27,11 @@ from pygls.lsp.types.language_features import (
     Hover,
 )
 from pygls.server import LanguageServer
-from pygls.workspace import Document
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 
 from vyper_lsp.navigation import ASTNavigator
-from vyper_lsp.utils import extract_enum_name, get_installed_vyper_version
+from vyper_lsp.utils import get_installed_vyper_version
 
 from .ast import AST
 
@@ -117,14 +117,6 @@ def go_to_definition(
         return Location(uri=params.text_document.uri, range=range)
 
 
-def get_enum_name(ls: LanguageServer, doc: Document, variant_line_no: int):
-    for line_no in range(variant_line_no, 0):
-        line = doc.lines[line_no]
-        enum_name = extract_enum_name(line)
-        if enum_name:
-            return enum_name
-
-
 @server.feature(TEXT_DOCUMENT_REFERENCES)
 def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Location]:
     document = ls.workspace.get_document(params.text_document.uri)
@@ -151,4 +143,22 @@ def implementation(ls: LanguageServer, params: DefinitionParams):
 
 
 def main():
-    server.start_io()
+    parser = argparse.ArgumentParser(
+        description="Start the server with specified protocol and options."
+    )
+    parser.add_argument("--stdio", action="store_true", help="Use stdio protocol")
+    parser.add_argument(
+        "--tcp",
+        nargs=2,
+        metavar=("HOST", "PORT"),
+        help="Use TCP protocol with specified host and port",
+    )
+
+    args = parser.parse_args()
+
+    if args.tcp:
+        host, port = args.tcp
+        server.start_tcp(host=host, port=int(port))
+    else:
+        # Default to stdio if --tcp is not provided
+        server.start_io()
