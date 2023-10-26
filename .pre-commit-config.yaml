@@ -15,11 +15,3 @@ repos:
     - id: ruff
     # Run the Ruff formatter.
     - id: ruff-format
-- repo: local
-  hooks:
-    - id: pytest
-      name: Run pytest
-      entry: pytest
-      language: system
-      types: [python]
-      pass_filenames: false
