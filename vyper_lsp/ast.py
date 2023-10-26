@@ -107,6 +107,12 @@ class AST:
 
         return inernal_nodes
 
+    def get_internal_functions_names(self):
+        if self.ast_data is None:
+            return []
+
+        return [node.name for node in self.get_internal_functions()]
+
     def find_nodes_referencing_internal_function(self, function: str):
         if self.ast_data is None:
             return []
@@ -244,3 +250,26 @@ class AST:
         for node in self.ast_data.get_children():
             if node.lineno <= pos.line and node.end_lineno >= pos.line:
                 return node
+
+    def find_nodes_referencing_symbol(self, symbol: str):
+        if self.ast_data is None:
+            return []
+
+        return_nodes = []
+
+        for node in self.ast_data.get_descendants(nodes.Name, {"id": symbol}):
+            if isinstance(node.get_ancestor(), nodes.Dict):
+                if node in node.get_ancestor().keys:
+                    continue
+            else:
+                return_nodes.append(node)
+
+        return return_nodes
+
+    @classmethod
+    def create_new_instance(cls, ast):
+        # Create a new instance
+        new_instance = super(AST, cls).__new__(cls)
+        # Optionally, initialize the new instance
+        new_instance.ast_data = ast
+        return new_instance

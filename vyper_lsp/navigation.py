@@ -4,7 +4,7 @@ from pygls.lsp.types.language_features import Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document
-from vyper.ast import EnumDef
+from vyper.ast import EnumDef, FunctionDef
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
@@ -47,6 +47,7 @@ class ASTNavigator:
     def find_references(self, doc: Document, pos: Position) -> List[Range]:
         og_line = doc.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
+        expression = get_expression_at_cursor(og_line, pos.character)
         if self.ast.ast_data is None:
             return []
         references = []
@@ -70,6 +71,16 @@ class ASTNavigator:
                     end=Position(line=ref.end_lineno - 1, character=ref.end_col_offset),
                 )
                 references.append(range)
+        elif word in self.ast.get_internal_functions_names() and (
+            og_line.startswith("def") or expression.startswith("self.")
+        ):
+            refs = self.ast.find_nodes_referencing_internal_function(word)
+            for ref in refs:
+                range = Range(
+                    start=Position(line=ref.lineno - 1, character=ref.col_offset),
+                    end=Position(line=ref.end_lineno - 1, character=ref.end_col_offset),
+                )
+                references.append(range)
         elif not og_line[0].isspace() and word in self.ast.get_state_variables():
             if "constant(" in og_line:
                 refs = self.ast.find_nodes_referencing_constant(word)
@@ -86,6 +97,16 @@ class ASTNavigator:
             refs = self.ast.find_nodes_referencing_enum_variant(
                 top_level_node.name, word
             )
+            for ref in refs:
+                range = Range(
+                    start=Position(line=ref.lineno - 1, character=ref.col_offset),
+                    end=Position(line=ref.end_lineno - 1, character=ref.end_col_offset),
+                )
+                references.append(range)
+        elif isinstance(top_level_node, FunctionDef):
+            refs = AST.create_new_instance(
+                top_level_node
+            ).find_nodes_referencing_symbol(word)
             for ref in refs:
                 range = Range(
                     start=Position(line=ref.lineno - 1, character=ref.col_offset),
