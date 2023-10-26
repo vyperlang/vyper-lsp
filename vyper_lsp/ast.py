@@ -86,14 +86,6 @@ class AST:
         if self.ast_data is None:
             return []
 
-        variable_decl_nodes = self.ast_data.get_children(nodes.VariableDecl)
-        print(variable_decl_nodes)
-
-        variable_decl_nodes = self.ast_data_folded.get_children(nodes.VariableDecl)
-        print(variable_decl_nodes)
-
-        variable_decl_nodes = self.ast_data_unfolded.get_children(nodes.VariableDecl)
-        print(variable_decl_nodes)
         return [
             node.target.id
             for node in self.ast_data.get_children(nodes.VariableDecl)
@@ -121,11 +113,11 @@ class AST:
         return [node.target.id for node in struct_node.get_children(nodes.AnnAssign)]
 
     def get_state_variables(self):
-        if self.ast_data_unfolded is None:
+        if self.ast_data is None:
             return []
 
         print(
-            f"{self.ast_data_unfolded.get_descendants(nodes.VariableDecl)}",
+            f"{self.ast_data.get_descendants(nodes.VariableDecl)}",
             file=sys.stderr,
         )
 
@@ -213,10 +205,10 @@ class AST:
         return None
 
     def find_state_variable_declaration_node_for_name(self, variable: str):
-        if self.ast_data_unfolded is None:
+        if self.ast_data is None:
             return None
 
-        for node in self.ast_data_unfolded.get_descendants(nodes.VariableDecl):
+        for node in self.ast_data.get_descendants(nodes.VariableDecl):
             if node.target.id == variable:
                 return node
 

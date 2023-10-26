@@ -1,9 +1,7 @@
 from pygls.lsp.types import Position
 import pytest
-from vyper.ast import nodes
 
 from vyper_lsp.ast import AST
-from vyper.compiler import CompilerData
 
 
 @pytest.fixture
@@ -22,8 +20,6 @@ def __init__():
     self.y = x
         """
     ast.build_ast(src)
-    cd = CompilerData(src)
-    print(cd.vyper_module.get_children(nodes.VariableDecl)[0].target.id)
     assert ast.get_constants() == ["x", "z"]
 
 
