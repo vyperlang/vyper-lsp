@@ -258,8 +258,12 @@ class AST:
         return_nodes = []
 
         for node in self.ast_data.get_descendants(nodes.Name, {"id": symbol}):
-            if isinstance(node.get_ancestor(), nodes.Dict):
-                if node in node.get_ancestor().keys:
+            parent = node.get_ancestor()
+            if isinstance(parent, nodes.Dict):
+                if symbol not in [key.id for key in parent.keys]:
+                    return_nodes.append(node)
+            elif isinstance(node.get_ancestor(), nodes.AnnAssign):
+                if node == node.get_ancestor().target:
                     continue
             else:
                 return_nodes.append(node)
