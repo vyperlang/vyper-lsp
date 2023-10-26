@@ -133,37 +133,36 @@ class ASTNavigator:
         if self.ast.ast_data is None:
             return None
 
-        og_line = document.lines[pos.line]
-        word = get_word_at_cursor(og_line, pos.character)
-        full_word = get_expression_at_cursor(og_line, pos.character)
-        range = None
+        line_content = document.lines[pos.line]
+        word = get_word_at_cursor(line_content, pos.character)
+        full_word = get_expression_at_cursor(line_content, pos.character)
         top_level_node = self.ast.find_top_level_node_at_pos(pos)
+        node = None
 
+        # Determine the type of declaration and find it
         if full_word.startswith("self."):
-            if "(" in full_word:
-                range = self.find_function_declaration(word)
-            else:
-                range = self.find_state_variable_declaration(word)
-        else:
-            if word in self.ast.get_user_defined_types():
-                range = self.find_type_declaration(word)
-            elif word in self.ast.get_constants():
-                range = self.find_state_variable_declaration(word)
-            elif isinstance(top_level_node, FunctionDef):
-                range = self.find_variable_declaration_under_node(top_level_node, word)
-                if not range:
-                    # check if full_word matches "enum.variant" regex
-                    pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)"
-                    match = re.match(pattern, full_word)
-                    if match:
-                        enum_name = match.group(1)
-                        variant_name = match.group(2)
-                        if enum_name in self.ast.get_enums():
-                            variants = self.ast.get_enum_variants(enum_name)
-                            if variant_name in variants:
-                                range = self.find_type_declaration(enum_name)
-        if range:
-            return range
+            node = (
+                self.find_function_declaration(word)
+                if "(" in full_word
+                else self.find_state_variable_declaration(word)
+            )
+        elif word in self.ast.get_user_defined_types():
+            node = self.find_type_declaration(word)
+        elif word in self.ast.get_constants():
+            node = self.find_state_variable_declaration(word)
+        elif isinstance(top_level_node, FunctionDef):
+            node = self.find_variable_declaration_under_node(top_level_node, word)
+            if not node:
+                match = ENUM_VARIANT_PATTERN.match(full_word)
+                if (
+                    match
+                    and match.group(1) in self.ast.get_enums()
+                    and match.group(2) in self.ast.get_enum_variants(match.group(1))
+                ):
+                    node = self.find_type_declaration(match.group(1))
+
+        if node:
+            return _create_range(node)
 
     def find_implementation(self, document: Document, pos: Position) -> Optional[Range]:
         og_line = document.lines[pos.line]
@@ -180,3 +179,13 @@ class ASTNavigator:
             return self.find_function_declaration(word)
         else:
             return None
+
+
+ENUM_VARIANT_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)")
+
+
+def _create_range(node) -> Range:
+    return Range(
+        start=Position(line=node.lineno - 1, character=node.col_offset),
+        end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+    )

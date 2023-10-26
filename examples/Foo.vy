@@ -26,16 +26,16 @@ def __init__():
     n: Roles = Roles.USER
     self.m = z
     self.n = n
-    a: address = ZERO_ADDRESS
+    a: address = empty(address)
     self.m.x = 1
     log Foo(1, msg.sender)
     log Foo(1, msg.sender)
 
-x: uint256
-
 @external
 def foo() -> uint256:
     return self.bar(10, 12)
+
+x: uint256
 
 @internal
 def bar(x: uint256, y: uint256) -> uint256:
