@@ -17,7 +17,7 @@ class ASTNavigator:
         self.ast = ast or AST()
 
     def find_state_variable_declaration(self, word: str) -> Optional[Range]:
-        node = self.ast.find_state_variable_declaration_node(word)
+        node = self.ast.find_state_variable_declaration_node_for_name(word)
         if node:
             range = Range(
                 start=Position(line=node.lineno - 1, character=node.col_offset),
@@ -50,7 +50,7 @@ class ASTNavigator:
             return range
 
     def find_type_declaration(self, word: str) -> Optional[Range]:
-        node = self.ast.find_type_declaration_node(word)
+        node = self.ast.find_type_declaration_node_for_name(word)
         if node:
             range = Range(
                 start=Position(line=node.lineno - 1, character=node.col_offset),
@@ -85,7 +85,7 @@ class ASTNavigator:
                     end=Position(line=ref.end_lineno - 1, character=ref.end_col_offset),
                 )
                 references.append(range)
-        elif word in self.ast.get_internal_functions_names() and (
+        elif word in self.ast.get_internal_functions() and (
             og_line.startswith("def") or expression.startswith("self.")
         ):
             refs = self.ast.find_nodes_referencing_internal_function(word)
@@ -159,7 +159,7 @@ class ASTNavigator:
                     and match.group(1) in self.ast.get_enums()
                     and match.group(2) in self.ast.get_enum_variants(match.group(1))
                 ):
-                    node = self.find_type_declaration(match.group(1))
+                    return self.find_type_declaration(match.group(1))
 
         if node:
             return _create_range(node)

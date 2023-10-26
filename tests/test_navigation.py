@@ -58,3 +58,9 @@ def test_find_references_storage_var(doc, navigator):
     pos = Position(line=13, character=0)
     references = navigator.find_references(doc, pos)
     assert len(references) == 3
+
+
+def test_find_declaration_constant(doc, navigator: ASTNavigator):
+    pos = Position(line=20, character=19)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration

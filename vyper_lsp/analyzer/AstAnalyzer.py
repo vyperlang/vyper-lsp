@@ -106,25 +106,25 @@ class AstAnalyzer(Analyzer):
                     )
                     return f"(Internal Function) **{fn_name}**({arg_str})"
             else:
-                node = self.ast.find_state_variable_declaration_node(word)
+                node = self.ast.find_state_variable_declaration_node_for_name(word)
                 if node:
                     variable_type = node.annotation.id
                     return f"(State Variable) **{word}** : **{variable_type}**"
         else:
             if word in self.ast.get_structs():
-                node = self.ast.find_type_declaration_node(word)
+                node = self.ast.find_type_declaration_node_for_name(word)
                 if node:
                     return f"(Struct) **{word}**"
             elif word in self.ast.get_enums():
-                node = self.ast.find_type_declaration_node(word)
+                node = self.ast.find_type_declaration_node_for_name(word)
                 if node:
                     return f"(Enum) **{word}**"
             elif word in self.ast.get_events():
-                node = self.ast.find_type_declaration_node(word)
+                node = self.ast.find_type_declaration_node_for_name(word)
                 if node:
                     return f"(Event) **{word}**"
             elif word in self.ast.get_constants():
-                node = self.ast.find_state_variable_declaration_node(word)
+                node = self.ast.find_state_variable_declaration_node_for_name(word)
                 if node:
                     variable_type = node.annotation.id
                     return f"(Constant) **{word}** : **{variable_type}**"
