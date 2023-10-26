@@ -4,6 +4,7 @@ from pygls.lsp.types.language_features import Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document
+from vyper.ast import EnumDef
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
@@ -50,6 +51,8 @@ class ASTNavigator:
             return []
         references = []
 
+        top_level_node = self.ast.find_top_level_node_at_pos(pos)
+
         if word in self.ast.get_enums():
             # find all references to this type
             refs = self.ast.find_nodes_referencing_enum(word)
@@ -78,6 +81,17 @@ class ASTNavigator:
                     end=Position(line=ref.end_lineno - 1, character=ref.end_col_offset),
                 )
                 references.append(range)
+        elif isinstance(top_level_node, EnumDef):
+            # find all references to this enum variant
+            refs = self.ast.find_nodes_referencing_enum_variant(
+                top_level_node.name, word
+            )
+            for ref in refs:
+                range = Range(
+                    start=Position(line=ref.lineno - 1, character=ref.col_offset),
+                    end=Position(line=ref.end_lineno - 1, character=ref.end_col_offset),
+                )
+                references.append(range)
         return references
 
     def find_declaration(self, document: Document, pos: Position) -> Optional[Range]:
@@ -97,10 +111,6 @@ class ASTNavigator:
             else:
                 range = self.find_state_variable_declaration(word)
         else:
-            print(
-                f"user defined types: {self.ast.get_user_defined_types()}",
-                file=sys.stderr,
-            )
             if word in self.ast.get_user_defined_types():
                 range = self.find_type_declaration(word)
             elif word in self.ast.get_constants():

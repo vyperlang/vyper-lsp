@@ -1,6 +1,8 @@
 import sys
+from typing import Optional
+from pygls.lsp.types import Position
 from pygls.lsp.types.language_features import List
-from vyper.ast import nodes
+from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 
 ast = None
@@ -206,7 +208,7 @@ class AST:
 
     def find_nodes_referencing_enum_variant(self, enum: str, variant: str):
         if self.ast_data is None:
-            return None
+            return []
 
         return self.ast_data.get_descendants(
             nodes.Attribute, {"attr": variant, "value.id": enum}
@@ -234,3 +236,11 @@ class AST:
             return_nodes.append(node)
 
         return return_nodes
+
+    def find_top_level_node_at_pos(self, pos: Position) -> Optional[VyperNode]:
+        if self.ast_data is None:
+            return None
+
+        for node in self.ast_data.get_children():
+            if node.lineno <= pos.line and node.end_lineno >= pos.line:
+                return node
