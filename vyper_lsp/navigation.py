@@ -1,10 +1,9 @@
 import re
-import sys
 from pygls.lsp.types.language_features import Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document
-from vyper.ast import EnumDef, FunctionDef
+from vyper.ast import EnumDef, FunctionDef, VyperNode
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
@@ -23,6 +22,21 @@ class ASTNavigator:
             range = Range(
                 start=Position(line=node.lineno - 1, character=node.col_offset),
                 end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+            )
+            return range
+
+    def find_variable_declaration_under_node(
+        self, node: VyperNode, symbol: str
+    ) -> Optional[Range]:
+        decl_node = AST.create_new_instance(node).find_node_declaring_symbol(symbol)
+        if decl_node:
+            range = Range(
+                start=Position(
+                    line=decl_node.lineno - 1, character=decl_node.col_offset
+                ),
+                end=Position(
+                    line=decl_node.end_lineno - 1, character=decl_node.end_col_offset
+                ),
             )
             return range
 
@@ -123,8 +137,7 @@ class ASTNavigator:
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
         range = None
-
-        print(f"word: {word}", file=sys.stderr)
+        top_level_node = self.ast.find_top_level_node_at_pos(pos)
 
         if full_word.startswith("self."):
             if "(" in full_word:
@@ -136,17 +149,19 @@ class ASTNavigator:
                 range = self.find_type_declaration(word)
             elif word in self.ast.get_constants():
                 range = self.find_state_variable_declaration(word)
-            else:
-                # check if full_word matches "enum.variant" regex
-                pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)"
-                match = re.match(pattern, full_word)
-                if match:
-                    enum_name = match.group(1)
-                    variant_name = match.group(2)
-                    if enum_name in self.ast.get_enums():
-                        variants = self.ast.get_enum_variants(enum_name)
-                        if variant_name in variants:
-                            range = self.find_type_declaration(enum_name)
+            elif isinstance(top_level_node, FunctionDef):
+                range = self.find_variable_declaration_under_node(top_level_node, word)
+                if not range:
+                    # check if full_word matches "enum.variant" regex
+                    pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)"
+                    match = re.match(pattern, full_word)
+                    if match:
+                        enum_name = match.group(1)
+                        variant_name = match.group(2)
+                        if enum_name in self.ast.get_enums():
+                            variants = self.ast.get_enum_variants(enum_name)
+                            if variant_name in variants:
+                                range = self.find_type_declaration(enum_name)
         if range:
             return range
 

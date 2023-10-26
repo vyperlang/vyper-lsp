@@ -270,6 +270,16 @@ class AST:
 
         return return_nodes
 
+    def find_node_declaring_symbol(self, symbol: str):
+        if self.ast_data is None:
+            return None
+
+        for node in self.ast_data.get_descendants(
+            (nodes.AnnAssign, nodes.VariableDecl)
+        ):
+            if node.target.id == symbol:
+                return node
+
     @classmethod
     def create_new_instance(cls, ast):
         # Create a new instance
