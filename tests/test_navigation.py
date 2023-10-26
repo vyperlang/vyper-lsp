@@ -63,4 +63,45 @@ def test_find_references_storage_var(doc, navigator):
 def test_find_declaration_constant(doc, navigator: ASTNavigator):
     pos = Position(line=20, character=19)
     declaration = navigator.find_declaration(doc, pos)
-    assert declaration
+    assert declaration and declaration.start.line == 16
+
+
+def test_find_declaration_struct(doc, navigator: ASTNavigator):
+    pos = Position(line=22, character=7)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 6
+
+    pos = Position(line=22, character=14)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 6
+
+
+def test_find_declaration_enum(doc, navigator: ASTNavigator):
+    pos = Position(line=25, character=7)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 9
+
+
+def test_find_declaration_enum_variant(doc, navigator: ASTNavigator):
+    # TODO: this currently jumps to the enum declaration, not the variant
+    pos = Position(line=25, character=25)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 9
+
+
+def test_find_declaration_event(doc, navigator: ASTNavigator):
+    pos = Position(line=24, character=10)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 2
+
+
+def test_find_declaration_function(doc, navigator: ASTNavigator):
+    pos = Position(line=35, character=17)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 40
+
+
+def test_find_declaration_storage_var(doc, navigator: ASTNavigator):
+    pos = Position(line=26, character=9)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 13

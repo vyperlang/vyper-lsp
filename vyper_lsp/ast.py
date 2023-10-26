@@ -1,5 +1,4 @@
 import copy
-import sys
 from typing import Optional
 from pygls.lsp.types import Position
 from pygls.lsp.types.language_features import List
@@ -116,14 +115,8 @@ class AST:
         if self.ast_data is None:
             return []
 
-        print(
-            f"{self.ast_data.get_descendants(nodes.VariableDecl)}",
-            file=sys.stderr,
-        )
-
         return [
-            node.target.id
-            for node in self.ast_data_unfolded.get_descendants(nodes.VariableDecl)
+            node.target.id for node in self.ast_data.get_descendants(nodes.VariableDecl)
         ]
 
     def get_internal_function_nodes(self):

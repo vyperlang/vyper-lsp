@@ -141,15 +141,14 @@ class ASTNavigator:
 
         # Determine the type of declaration and find it
         if full_word.startswith("self."):
-            node = (
-                self.find_function_declaration(word)
-                if "(" in full_word
-                else self.find_state_variable_declaration(word)
-            )
+            if "(" in full_word:
+                return self.find_function_declaration(word)
+            else:
+                return self.find_state_variable_declaration(word)
         elif word in self.ast.get_user_defined_types():
-            node = self.find_type_declaration(word)
+            return self.find_type_declaration(word)
         elif word in self.ast.get_constants():
-            node = self.find_state_variable_declaration(word)
+            return self.find_state_variable_declaration(word)
         elif isinstance(top_level_node, FunctionDef):
             node = self.find_variable_declaration_under_node(top_level_node, word)
             if not node:
