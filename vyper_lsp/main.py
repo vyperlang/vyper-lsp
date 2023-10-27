@@ -29,9 +29,11 @@ from pygls.lsp.types.language_features import (
 from pygls.server import LanguageServer
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
+from vyper_lsp.debounce import Debouncer
 
 from vyper_lsp.navigation import ASTNavigator
 from vyper_lsp.utils import get_installed_vyper_version
+
 
 from .ast import AST
 
@@ -48,6 +50,8 @@ source_analyzer = SourceAnalyzer()
 
 ast = AST()
 
+debouncer = Debouncer(wait=0.5)
+
 
 def check_minimum_vyper_version():
     vy_version = get_installed_vyper_version()
@@ -58,6 +62,7 @@ def check_minimum_vyper_version():
         )
 
 
+@debouncer.debounce
 def validate_doc(ls, params):
     text_doc = ls.workspace.get_document(params.text_document.uri)
     source_diagnostics = source_analyzer.get_diagnostics(text_doc)
