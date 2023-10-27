@@ -19,6 +19,7 @@ jobs:
       run: coverage run -m pytest
     - name: Report coverage
       run: |
+        coverage html
         coverage report --fail-under=75
     - name: Upload coverage report
       uses: actions/upload-artifact@v2
