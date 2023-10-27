@@ -92,6 +92,8 @@ class AstAnalyzer(Analyzer):
             return CompletionList(is_incomplete=False, items=[])
 
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
+        if len(document.lines) < pos.line:
+            return None
         og_line = document.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)

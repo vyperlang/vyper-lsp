@@ -38,16 +38,21 @@ def is_attribute_access(line):
     return bool(re.match(reg, line.strip()))
 
 
+def is_word_char(char):
+    # true for alnum and underscore
+    return char.isalnum() or char == "_"
+
+
 def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
     start = cursor_index
     end = cursor_index
 
     # Find the start of the word
-    while start > 0 and sentence[start - 1].isalnum():
+    while start > 0 and is_word_char(sentence[start - 1]):
         start -= 1
 
     # Find the end of the word
-    while end < len(sentence) and sentence[end].isalnum():
+    while end < len(sentence) and is_word_char(sentence[end]):
         end += 1
 
     # Extract the word
