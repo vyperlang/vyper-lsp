@@ -99,7 +99,7 @@ class AST:
         if enum_node is None:
             return []
 
-        return [node.value.id for node in enum_node.get_children()]
+        return [node.value.id for node in enum_node.get_children(nodes.Expr)]
 
     def get_struct_fields(self, struct: str):
         if self.ast_data_unfolded is None:

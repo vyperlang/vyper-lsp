@@ -41,6 +41,18 @@ enum Foo:
     """
     ast.build_ast(src)
     assert ast.get_enum_variants("Foo") == ["Bar", "Baz"]
+    assert ast.get_enum_variants("Bar") == []
+
+
+def test_get_struct_fields(ast):
+    src = """
+struct Foo:
+    bar: uint256
+    baz: address
+    """
+    ast.build_ast(src)
+    assert ast.get_struct_fields("Foo") == ["bar", "baz"]
+    assert ast.get_struct_fields("Bar") == []
 
 
 def test_get_events(ast):
@@ -272,6 +284,7 @@ def foo():
     ast.build_ast(src)
     assert ast.get_attributes_for_symbol("Foo") == ["bar", "baz"]
     assert ast.get_attributes_for_symbol("Bar") == ["Baz"]
+    assert ast.get_attributes_for_symbol("Baz") == []
 
 
 def test_find_function_declaration_node_for_name(ast):
@@ -290,6 +303,7 @@ def bar():
     assert (
         ast.find_function_declaration_node_for_name("foo").lineno == 3
     )  # line number of def foo(), counting first newline
+    assert ast.find_function_declaration_node_for_name("baz") is None
 
 
 def test_find_state_variable_declaration_node_for_name(ast):
@@ -314,6 +328,7 @@ def foo():
     assert (
         ast.find_state_variable_declaration_node_for_name("z").lineno == 4
     )  # line number of z: bool, counting first newline
+    assert ast.find_state_variable_declaration_node_for_name("baz") is None
 
 
 def test_find_type_declaration_node_for_name(ast):
@@ -336,6 +351,10 @@ def foo():
     assert (
         ast.find_type_declaration_node_for_name("Bar").lineno == 6
     )  # line number of enum Bar, counting first newline
+    assert (
+        ast.find_type_declaration_node_for_name("Baz").lineno == 7
+    )  # line number of Baz, counting first newline
+    assert ast.find_type_declaration_node_for_name("baz") is None
 
 
 def test_find_top_level_node_at_position(ast):
@@ -383,3 +402,33 @@ def foo():
     assert (
         ast.find_node_declaring_symbol("y").lineno == 3
     )  # line number of y: address, counting first newline
+
+
+def test_ast_no_data_returns_empty_and_none(ast: AST):
+    ast.ast_data = None
+    ast.ast_data_folded = None
+    ast.ast_data_unfolded = None
+
+    assert ast.get_constants() == []
+    assert ast.get_enums() == []
+    assert ast.get_enum_variants("Foo") == []
+    assert ast.get_events() == []
+    assert ast.get_structs() == []
+    assert ast.get_user_defined_types() == []
+    assert ast.get_state_variables() == []
+    assert ast.get_internal_functions() == []
+    assert ast.get_struct_fields("Foo") == []
+    assert ast.get_internal_function_nodes() == []
+    assert ast.find_nodes_referencing_internal_function("foo") == []
+    assert ast.find_nodes_referencing_state_variable("x") == []
+    assert ast.find_nodes_referencing_constant("x") == []
+    assert ast.find_nodes_referencing_enum("Foo") == []
+    assert ast.find_nodes_referencing_enum_variant("Foo", "Bar") == []
+    assert ast.find_nodes_referencing_struct("Foo") == []
+    assert ast.find_nodes_referencing_symbol("x") == []
+    assert ast.get_attributes_for_symbol("Foo") == []
+    assert ast.find_function_declaration_node_for_name("foo") is None
+    assert ast.find_state_variable_declaration_node_for_name("x") is None
+    assert ast.find_type_declaration_node_for_name("Foo") is None
+    assert ast.find_top_level_node_at_pos(Position(line=0, character=0)) is None
+    assert ast.find_node_declaring_symbol("x") is None

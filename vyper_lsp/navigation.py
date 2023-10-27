@@ -7,6 +7,8 @@ from vyper.ast import EnumDef, FunctionDef, VyperNode
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
+ENUM_VARIANT_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)")
+
 
 # this class should abstract away all the AST stuff
 # and just provide a simple interface for navigation
@@ -137,7 +139,6 @@ class ASTNavigator:
         word = get_word_at_cursor(line_content, pos.character)
         full_word = get_expression_at_cursor(line_content, pos.character)
         top_level_node = self.ast.find_top_level_node_at_pos(pos)
-        node = None
 
         # Determine the type of declaration and find it
         if full_word.startswith("self."):
@@ -150,8 +151,10 @@ class ASTNavigator:
         elif word in self.ast.get_constants():
             return self.find_state_variable_declaration(word)
         elif isinstance(top_level_node, FunctionDef):
-            node = self.find_variable_declaration_under_node(top_level_node, word)
-            if not node:
+            range = self.find_variable_declaration_under_node(top_level_node, word)
+            if range:
+                return range
+            else:
                 match = ENUM_VARIANT_PATTERN.match(full_word)
                 if (
                     match
@@ -159,9 +162,6 @@ class ASTNavigator:
                     and match.group(2) in self.ast.get_enum_variants(match.group(1))
                 ):
                     return self.find_type_declaration(match.group(1))
-
-        if node:
-            return _create_range(node)
 
     def find_implementation(self, document: Document, pos: Position) -> Optional[Range]:
         og_line = document.lines[pos.line]
@@ -178,13 +178,3 @@ class ASTNavigator:
             return self.find_function_declaration(word)
         else:
             return None
-
-
-ENUM_VARIANT_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)")
-
-
-def _create_range(node) -> Range:
-    return Range(
-        start=Position(line=node.lineno - 1, character=node.col_offset),
-        end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
-    )

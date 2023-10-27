@@ -60,6 +60,30 @@ def test_find_references_storage_var(doc, navigator):
     assert len(references) == 3
 
 
+def test_find_references_constant(doc, navigator):
+    pos = Position(line=16, character=0)
+    references = navigator.find_references(doc, pos)
+    assert len(references) == 2
+
+
+def test_find_references_function_local_var(doc, navigator):
+    pos = Position(line=20, character=5)
+    references = navigator.find_references(doc, pos)
+    assert len(references) == 1
+
+
+def test_find_internal_fn_implementation(doc, navigator: ASTNavigator):
+    pos = Position(line=35, character=17)
+    implementation = navigator.find_implementation(doc, pos)
+    assert implementation and implementation.start.line == 40
+
+
+def test_find_interface_fn_implementation(doc, navigator: ASTNavigator):
+    pos = Position(line=51, character=10)
+    implementation = navigator.find_implementation(doc, pos)
+    assert implementation and implementation.start.line == 57
+
+
 def test_find_declaration_constant(doc, navigator: ASTNavigator):
     pos = Position(line=20, character=19)
     declaration = navigator.find_declaration(doc, pos)
@@ -105,3 +129,15 @@ def test_find_declaration_storage_var(doc, navigator: ASTNavigator):
     pos = Position(line=26, character=9)
     declaration = navigator.find_declaration(doc, pos)
     assert declaration and declaration.start.line == 13
+
+
+def test_find_declaration_function_local_var(doc, navigator: ASTNavigator):
+    pos = Position(line=26, character=13)
+    declaration = navigator.find_declaration(doc, pos)
+    assert declaration and declaration.start.line == 22
+
+
+def test_find_implementation_variable_returns_none(doc, navigator: ASTNavigator):
+    pos = Position(line=26, character=13)
+    implementation = navigator.find_implementation(doc, pos)
+    assert implementation is None
