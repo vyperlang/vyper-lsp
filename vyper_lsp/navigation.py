@@ -15,8 +15,8 @@ ENUM_VARIANT_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0
 #
 # the navigator should mainly return Ranges
 class ASTNavigator:
-    def __init__(self, ast=None):
-        self.ast = ast or AST()
+    def __init__(self, ast):
+        self.ast = ast
 
     def find_state_variable_declaration(self, word: str) -> Optional[Range]:
         node = self.ast.find_state_variable_declaration_node_for_name(word)
@@ -30,7 +30,7 @@ class ASTNavigator:
     def find_variable_declaration_under_node(
         self, node: VyperNode, symbol: str
     ) -> Optional[Range]:
-        decl_node = AST.create_new_instance(node).find_node_declaring_symbol(symbol)
+        decl_node = AST.from_node(node).find_node_declaring_symbol(symbol)
         if decl_node:
             range = Range(
                 start=Position(
@@ -120,9 +120,7 @@ class ASTNavigator:
                 )
                 references.append(range)
         elif isinstance(top_level_node, FunctionDef):
-            refs = AST.create_new_instance(
-                top_level_node
-            ).find_nodes_referencing_symbol(word)
+            refs = AST.from_node(top_level_node).find_nodes_referencing_symbol(word)
             for ref in refs:
                 range = Range(
                     start=Position(line=ref.lineno - 1, character=ref.col_offset),

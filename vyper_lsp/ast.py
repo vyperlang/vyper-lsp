@@ -5,22 +5,21 @@ from pygls.lsp.types.language_features import List
 from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 
-ast = None
-
 
 class AST:
-    _instance = None
     ast_data = None
     ast_data_folded = None
     ast_data_unfolded = None
 
     custom_type_node_types = (nodes.StructDef, nodes.EnumDef, nodes.EventDef)
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(AST, cls).__new__(cls)
-            cls._instance.ast_data = None
-        return cls._instance
+    @classmethod
+    def from_node(cls, node: VyperNode):
+        ast = cls()
+        ast.ast_data = node
+        ast.ast_data_unfolded = node
+        ast.ast_data_folded = node
+        return ast
 
     def update_ast(self, document):
         self.build_ast(document.source)
@@ -45,47 +44,38 @@ class AST:
             print(f"Error generating folded AST, {e}")
             pass
 
-    def get_descendants_from_best_ast(self, *args, **kwargs):
+    @property
+    def best_ast(self):
         if self.ast_data_unfolded:
-            return self.ast_data_unfolded.get_descendants(*args, **kwargs)
+            return self.ast_data_unfolded
         elif self.ast_data:
-            return self.ast_data.get_descendants(*args, **kwargs)
+            return self.ast_data
         elif self.ast_data_folded:
-            return self.ast_data_folded.get_descendants(*args, **kwargs)
+            return self.ast_data_folded
         else:
-            return []
+            return None
 
-    def get_children_from_best_ast(self, *args, **kwargs):
-        if self.ast_data_unfolded:
-            return self.ast_data_unfolded.get_children(*args, **kwargs)
-        elif self.ast_data:
-            return self.ast_data.get_children(*args, **kwargs)
-        elif self.ast_data_folded:
-            return self.ast_data_folded.get_children(*args, **kwargs)
-        else:
+    def get_descendants(self, *args, **kwargs):
+        if self.best_ast is None:
             return []
+        return self.best_ast.get_descendants(*args, **kwargs)
+
+    def get_top_level_nodes(self, *args, **kwargs):
+        if self.best_ast is None:
+            return []
+        return self.best_ast.get_children(*args, **kwargs)
 
     def get_enums(self) -> List[str]:
-        return [node.name for node in self.get_descendants_from_best_ast(nodes.EnumDef)]
+        return [node.name for node in self.get_descendants(nodes.EnumDef)]
 
     def get_structs(self) -> List[str]:
-        if self.ast_data_unfolded is None:
-            return []
-
-        return [
-            node.name for node in self.get_descendants_from_best_ast(nodes.StructDef)
-        ]
+        return [node.name for node in self.get_descendants(nodes.StructDef)]
 
     def get_events(self) -> List[str]:
-        return [
-            node.name for node in self.get_descendants_from_best_ast(nodes.EventDef)
-        ]
+        return [node.name for node in self.get_descendants(nodes.EventDef)]
 
     def get_user_defined_types(self):
-        return [
-            node.name
-            for node in self.get_descendants_from_best_ast(self.custom_type_node_types)
-        ]
+        return [node.name for node in self.get_descendants(self.custom_type_node_types)]
 
     def get_constants(self):
         # NOTE: Constants should be fetched from self.ast_data, they are missing
@@ -123,38 +113,31 @@ class AST:
         ]
 
     def get_internal_function_nodes(self):
-        function_nodes = self.get_descendants_from_best_ast(nodes.FunctionDef)
-        inernal_nodes = []
+        function_nodes = self.get_descendants(nodes.FunctionDef)
+        internal_nodes = []
 
         for node in function_nodes:
             for decorator in node.decorator_list:
                 if decorator.id == "internal":
-                    inernal_nodes.append(node)
+                    internal_nodes.append(node)
 
-        return inernal_nodes
+        return internal_nodes
 
     def get_internal_functions(self):
         return [node.name for node in self.get_internal_function_nodes()]
 
     def find_nodes_referencing_internal_function(self, function: str):
-        return self.get_descendants_from_best_ast(
+        return self.get_descendants(
             nodes.Call, {"func.attr": function, "func.value.id": "self"}
         )
 
     def find_nodes_referencing_state_variable(self, variable: str):
-        return self.get_descendants_from_best_ast(
+        return self.get_descendants(
             nodes.Attribute, {"value.id": "self", "attr": variable}
         )
 
     def find_nodes_referencing_constant(self, constant: str):
-        # NOTE: Constants should be fetched from self.ast_data, they are missing
-        # from self.ast_data_unfolded and self.ast_data_folded
-        if self.ast_data_unfolded is None:
-            return []
-
-        name_nodes = self.ast_data_unfolded.get_descendants(
-            nodes.Name, {"id": constant}
-        )
+        name_nodes = self.get_descendants(nodes.Name, {"id": constant})
         return [
             node
             for node in name_nodes
@@ -174,7 +157,7 @@ class AST:
             return []
 
     def find_function_declaration_node_for_name(self, function: str):
-        for node in self.get_descendants_from_best_ast(nodes.FunctionDef):
+        for node in self.get_descendants(nodes.FunctionDef):
             name_match = node.name == function
             not_interface_declaration = not isinstance(
                 node.get_ancestor(), nodes.InterfaceDef
@@ -197,7 +180,7 @@ class AST:
         return None
 
     def find_type_declaration_node_for_name(self, symbol: str):
-        for node in self.get_descendants_from_best_ast(self.custom_type_node_types):
+        for node in self.get_descendants(self.custom_type_node_types):
             if node.name == symbol:
                 return node
             if isinstance(node, nodes.EnumDef):
@@ -210,61 +193,54 @@ class AST:
     def find_nodes_referencing_enum(self, enum: str):
         return_nodes = []
 
-        for node in self.get_descendants_from_best_ast(
-            nodes.AnnAssign, {"annotation.id": enum}
-        ):
+        for node in self.get_descendants(nodes.AnnAssign, {"annotation.id": enum}):
             return_nodes.append(node)
-        for node in self.get_descendants_from_best_ast(
-            nodes.Attribute, {"value.id": enum}
-        ):
+        for node in self.get_descendants(nodes.Attribute, {"value.id": enum}):
             return_nodes.append(node)
-        for node in self.get_descendants_from_best_ast(
-            nodes.VariableDecl, {"annotation.id": enum}
-        ):
+        for node in self.get_descendants(nodes.VariableDecl, {"annotation.id": enum}):
+            return_nodes.append(node)
+        for node in self.get_descendants(nodes.FunctionDef, {"returns.id": enum}):
             return_nodes.append(node)
 
         return return_nodes
 
     def find_nodes_referencing_enum_variant(self, enum: str, variant: str):
-        return self.get_descendants_from_best_ast(
+        return self.get_descendants(
             nodes.Attribute, {"attr": variant, "value.id": enum}
         )
 
     def find_nodes_referencing_struct(self, struct: str):
         return_nodes = []
 
-        for node in self.get_descendants_from_best_ast(
-            nodes.AnnAssign, {"annotation.id": struct}
-        ):
+        for node in self.get_descendants(nodes.AnnAssign, {"annotation.id": struct}):
             return_nodes.append(node)
-        for node in self.get_descendants_from_best_ast(nodes.Call, {"func.id": struct}):
+        for node in self.get_descendants(nodes.Call, {"func.id": struct}):
             return_nodes.append(node)
-        for node in self.get_descendants_from_best_ast(
-            nodes.VariableDecl, {"annotation.id": struct}
-        ):
+        for node in self.get_descendants(nodes.VariableDecl, {"annotation.id": struct}):
             return_nodes.append(node)
-        for node in self.get_descendants_from_best_ast(
-            nodes.FunctionDef, {"returns.id": struct}
-        ):
+        for node in self.get_descendants(nodes.FunctionDef, {"returns.id": struct}):
             return_nodes.append(node)
 
         return return_nodes
 
     def find_top_level_node_at_pos(self, pos: Position) -> Optional[VyperNode]:
-        for node in self.get_children_from_best_ast():
-            if node.lineno <= pos.line and node.end_lineno >= pos.line:
+        for node in self.get_top_level_nodes():
+            if node.lineno <= pos.line and pos.line <= node.end_lineno:
                 return node
 
     def find_nodes_referencing_symbol(self, symbol: str):
+        # this only runs on subtrees
         return_nodes = []
 
-        for node in self.get_descendants_from_best_ast(nodes.Name, {"id": symbol}):
+        for node in self.get_descendants(nodes.Name, {"id": symbol}):
             parent = node.get_ancestor()
             if isinstance(parent, nodes.Dict):
+                # skip struct key names
                 if symbol not in [key.id for key in parent.keys]:
                     return_nodes.append(node)
-            elif isinstance(node.get_ancestor(), nodes.AnnAssign):
-                if node.id == node.get_ancestor().target.id:
+            elif isinstance(parent, nodes.AnnAssign):
+                if node.id == parent.target.id:
+                    # lhs of variable declaration
                     continue
                 else:
                     return_nodes.append(node)
@@ -274,18 +250,6 @@ class AST:
         return return_nodes
 
     def find_node_declaring_symbol(self, symbol: str):
-        for node in self.get_descendants_from_best_ast(
-            (nodes.AnnAssign, nodes.VariableDecl)
-        ):
+        for node in self.get_descendants((nodes.AnnAssign, nodes.VariableDecl)):
             if node.target.id == symbol:
                 return node
-
-    @classmethod
-    def create_new_instance(cls, ast):
-        # Create a new instance
-        new_instance = super(AST, cls).__new__(cls)
-        # Optionally, initialize the new instance
-        new_instance.ast_data = ast
-        new_instance.ast_data_unfolded = ast
-        new_instance.ast_data_folded = ast
-        return new_instance

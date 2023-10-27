@@ -260,7 +260,7 @@ def bar():
         """
     ast.build_ast(src)
     functiondef_node = ast.get_internal_function_nodes()[0]
-    fn_ast = AST.create_new_instance(functiondef_node)
+    fn_ast = AST.from_node(functiondef_node)
     references = fn_ast.find_nodes_referencing_symbol("x")
     assert len(references) == 1
     assert (

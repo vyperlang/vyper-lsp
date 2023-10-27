@@ -7,7 +7,6 @@ from pygls.workspace import Document
 from vyper.compiler import CompilerData
 from vyper.exceptions import VyperException
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
-from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
     get_expression_at_cursor,
     get_word_at_cursor,
@@ -39,9 +38,9 @@ DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
 
 class AstAnalyzer(Analyzer):
-    def __init__(self, ast=None) -> None:
+    def __init__(self, ast) -> None:
         super().__init__()
-        self.ast = ast or AST()
+        self.ast = ast
         if get_installed_vyper_version() < min_vyper_version:
             self.diagnostics_enabled = False
         else:

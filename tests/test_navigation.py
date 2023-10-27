@@ -8,16 +8,21 @@ import pytest
 
 
 @pytest.fixture
-def doc():
-    doc = Document(uri="examples/Foo.vy")
+def ast():
     ast = AST()
+    return ast
+
+
+@pytest.fixture
+def doc(ast):
+    doc = Document(uri="examples/Foo.vy")
     ast.build_ast(doc.source)
     return doc
 
 
 @pytest.fixture
-def navigator():
-    return ASTNavigator()
+def navigator(ast):
+    return ASTNavigator(ast)
 
 
 def test_find_references_event_name(doc, navigator):

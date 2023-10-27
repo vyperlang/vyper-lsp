@@ -37,18 +37,19 @@ from vyper_lsp.utils import get_installed_vyper_version
 
 from .ast import AST
 
+ast = AST()
+
 server = LanguageServer("vyper", "v0.0.1")
-navigator = ASTNavigator()
+navigator = ASTNavigator(ast)
 
 # AstAnalyzer is faster and better, but depends on the locally installed vyper version
 # we should keep it around for now and use it when the contract version pragma is missing
 # or if the version pragma matches the system version. its much faster so we can run it
 # on every keystroke, with sourceanalyzer we should only run it on save
-ast_analyzer = AstAnalyzer()
+ast_analyzer = AstAnalyzer(ast)
 completer = ast_analyzer
 source_analyzer = SourceAnalyzer()
 
-ast = AST()
 
 debouncer = Debouncer(wait=0.5)
 
