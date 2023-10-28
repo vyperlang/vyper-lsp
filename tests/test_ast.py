@@ -189,6 +189,23 @@ def foo():
     assert len(references) == 0
 
 
+def test_find_nodes_referencing_constant_folded(ast):
+    src = """
+x: constant(uint256) = 10 ** 2
+y: uint256
+
+@external
+def foo():
+    self.y = x
+        """
+    ast.build_ast(src)
+    references = ast.find_nodes_referencing_constant("x")
+    assert len(references) == 1
+    assert (
+        references[0].lineno == 7
+    )  # line number of self.y = x, counting first newline
+
+
 def test_find_nodes_referencing_enum(ast):
     src = """
 enum Foo:
@@ -199,10 +216,14 @@ enum Foo:
 def foo():
     x: Foo = Foo.Bar
     y: Foo = Foo.Baz
+
+@external
+def bar() -> Foo:
+    return Foo.Bar   
         """
     ast.build_ast(src)
     references = ast.find_nodes_referencing_enum("Foo")
-    assert len(references) == 4
+    assert len(references) == 6
     assert references[0].lineno == 8  # line number of self.Bar, counting first newline
     assert references[3].lineno == 9  # line number of self.Baz, counting first newline
 
@@ -237,10 +258,14 @@ struct Foo:
 @external
 def foo():
     x: Foo = Foo({bar: 123, baz: msg.sender})
+
+@external
+def bar() -> Foo:
+    return Foo({bar: 123, baz: msg.sender})
         """
     ast.build_ast(src)
     references = ast.find_nodes_referencing_struct("Foo")
-    assert len(references) == 2
+    assert len(references) == 4
     assert (
         references[0].lineno == 8
     )  # line number of x: Foo = Foo, counting first newline
