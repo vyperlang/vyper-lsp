@@ -219,7 +219,7 @@ def foo():
 
 @external
 def bar() -> Foo:
-    return Foo.Bar   
+    return Foo.Bar
         """
     ast.build_ast(src)
     references = ast.find_nodes_referencing_enum("Foo")
