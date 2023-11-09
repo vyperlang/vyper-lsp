@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vyper-lsp"
-version = "0.0.1b3"
+version = "0.0.1"
 description = "Language server for Vyper, a pythonic smart contract language"
 authors = ["z80 <z80@ophy.xyz>"]
 license = "MIT"
@@ -15,7 +15,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4"
+python = ">=3.10,<3.12"
 loguru = "^0.6.0"
 pygls = "0.13.1"
 tree-sitter = "^0.20.1"
