@@ -68,7 +68,7 @@ def test_find_references_storage_var(doc, navigator):
 def test_find_references_constant(doc, navigator):
     pos = Position(line=16, character=0)
     references = navigator.find_references(doc, pos)
-    assert len(references) == 2
+    assert len(references) == 1
 
 
 def test_find_references_function_local_var(doc, navigator):
@@ -90,7 +90,7 @@ def test_find_interface_fn_implementation(doc, navigator: ASTNavigator):
 
 
 def test_find_declaration_constant(doc, navigator: ASTNavigator):
-    pos = Position(line=20, character=19)
+    pos = Position(line=21, character=19)
     declaration = navigator.find_declaration(doc, pos)
     assert declaration and declaration.start.line == 16
 

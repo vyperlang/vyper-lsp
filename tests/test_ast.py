@@ -91,7 +91,7 @@ enum FooEnum:
     Baz
     """
     ast.build_ast(src)
-    assert ast.get_user_defined_types() == ["Foo", "FooEvent", "FooEnum"]
+    assert ast.get_user_defined_types() == ["Foo", "FooEnum"]
 
 
 def test_get_state_variables(ast):

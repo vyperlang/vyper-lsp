@@ -138,6 +138,7 @@ class ASTNavigator:
         full_word = get_expression_at_cursor(line_content, pos.character)
         top_level_node = self.ast.find_top_level_node_at_pos(pos)
 
+        print(f"word: {word} events: {self.ast.get_events()}")
         # Determine the type of declaration and find it
         if full_word.startswith("self."):
             if "(" in full_word:
@@ -145,6 +146,9 @@ class ASTNavigator:
             else:
                 return self.find_state_variable_declaration(word)
         elif word in self.ast.get_user_defined_types():
+            return self.find_type_declaration(word)
+        elif word in self.ast.get_events():
+            print(f"finding event declaration for {word}")
             return self.find_type_declaration(word)
         elif word in self.ast.get_constants():
             return self.find_state_variable_declaration(word)

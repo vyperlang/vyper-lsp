@@ -11,7 +11,7 @@ class AST:
     ast_data_folded = None
     ast_data_unfolded = None
 
-    custom_type_node_types = (nodes.StructDef, nodes.EnumDef, nodes.EventDef)
+    custom_type_node_types = (nodes.StructDef, nodes.EnumDef)
 
     @classmethod
     def from_node(cls, node: VyperNode):
@@ -180,7 +180,8 @@ class AST:
         return None
 
     def find_type_declaration_node_for_name(self, symbol: str):
-        for node in self.get_descendants(self.custom_type_node_types):
+        searchable_types = self.custom_type_node_types + (nodes.EventDef,)
+        for node in self.get_descendants(searchable_types):
             if node.name == symbol:
                 return node
             if isinstance(node, nodes.EnumDef):

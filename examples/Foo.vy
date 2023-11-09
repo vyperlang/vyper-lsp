@@ -1,4 +1,4 @@
-#pragma version 0.3.8
+#pragma version 0.3.10
 
 event Foo:
     arg1: uint256
