@@ -1,4 +1,4 @@
-#pragma version 0.3.10
+#pragma version 0.3.8
 
 event Foo:
     arg1: uint256
@@ -18,7 +18,7 @@ FEE: constant(uint256) = 100
 
 @external
 def __init__():
-    y: uint256 = FEE
+    y: uint256 = 100_000_100
     x: uint256 = FEE
     z: Bar = Bar({x: y})
     m: Roles = Roles.ADMIN
