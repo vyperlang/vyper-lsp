@@ -70,6 +70,10 @@ def test_find_references_constant(doc, navigator):
     references = navigator.find_references(doc, pos)
     assert len(references) == 1
 
+    pos = Position(line=60, character=0)
+    references = navigator.find_references(doc, pos)
+    assert len(references) == 2
+
 
 def test_find_references_function_local_var(doc, navigator):
     pos = Position(line=20, character=5)

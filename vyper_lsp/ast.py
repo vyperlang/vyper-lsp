@@ -118,7 +118,7 @@ class AST:
 
         for node in function_nodes:
             for decorator in node.decorator_list:
-                if decorator.id == "internal":
+                if isinstance(decorator, nodes.Name) and decorator.id == "internal":
                     internal_nodes.append(node)
 
         return internal_nodes
