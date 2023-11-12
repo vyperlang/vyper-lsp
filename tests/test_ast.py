@@ -1,12 +1,5 @@
 from pygls.lsp.types import Position
-import pytest
-
 from vyper_lsp.ast import AST
-
-
-@pytest.fixture
-def ast():
-    return AST()
 
 
 def test_get_constants(ast):

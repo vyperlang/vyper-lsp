@@ -7,6 +7,7 @@ from pygls.workspace import Document
 from vyper.compiler import CompilerData
 from vyper.exceptions import VyperException
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
+from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
     get_expression_at_cursor,
     get_word_at_cursor,
@@ -38,7 +39,7 @@ DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
 
 class AstAnalyzer(Analyzer):
-    def __init__(self, ast) -> None:
+    def __init__(self, ast: AST) -> None:
         super().__init__()
         self.ast = ast
         if get_installed_vyper_version() < min_vyper_version:
@@ -46,11 +47,10 @@ class AstAnalyzer(Analyzer):
         else:
             self.diagnostics_enabled = True
 
-    def get_completions(
-        self, ls: LanguageServer, params: CompletionParams
+    def get_completions_in_doc(
+        self, document: Document, params: CompletionParams
     ) -> CompletionList:
         items = []
-        document = ls.workspace.get_document(params.text_document.uri)
         current_line = document.lines[params.position.line].strip()
         custom_types = self.ast.get_user_defined_types()
 
@@ -58,8 +58,14 @@ class AstAnalyzer(Analyzer):
             if params.context.trigger_character == ".":
                 # get element before the dot
                 element = current_line.split(" ")[-1].split(".")[0]
-                for attr in self.ast.get_attributes_for_symbol(element):
-                    items.append(CompletionItem(label=attr))
+                if element == "self":
+                    for fn in self.ast.get_internal_functions():
+                        items.append(CompletionItem(label=fn))
+                    for var in self.ast.get_state_variables():
+                        items.append(CompletionItem(label=var))
+                else:
+                    for attr in self.ast.get_attributes_for_symbol(element):
+                        items.append(CompletionItem(label=attr))
                 completions = CompletionList(is_incomplete=False, items=[])
                 completions.add_items(items)
                 return completions
@@ -89,6 +95,12 @@ class AstAnalyzer(Analyzer):
 
         else:
             return CompletionList(is_incomplete=False, items=[])
+
+    def get_completions(
+        self, ls: LanguageServer, params: CompletionParams
+    ) -> CompletionList:
+        document = ls.workspace.get_document(params.text_document.uri)
+        return self.get_completions_in_doc(document, params)
 
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
         if len(document.lines) < pos.line:
