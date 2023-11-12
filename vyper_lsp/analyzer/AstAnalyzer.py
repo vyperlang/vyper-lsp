@@ -64,6 +64,8 @@ class AstAnalyzer(Analyzer):
                     for var in self.ast.get_state_variables():
                         items.append(CompletionItem(label=var))
                 else:
+                    # TODO: This is currently only correct for enums
+                    # For structs, we'll need to get the type of the variable
                     for attr in self.ast.get_attributes_for_symbol(element):
                         items.append(CompletionItem(label=attr))
                 completions = CompletionList(is_incomplete=False, items=[])
