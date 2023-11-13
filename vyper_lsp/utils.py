@@ -67,11 +67,17 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     end = cursor_index
 
     # Find the start of the word
-    while start > 0 and sentence[start - 1].isalnum() or sentence[start - 1] in ".[]()":
+    while (
+        start > 0
+        and is_word_char(sentence[start - 1])
+        or sentence[start - 1] in ".[]()"
+    ):
         start -= 1
 
     # Find the end of the word
-    while end < len(sentence) and sentence[end].isalnum() or sentence[end] in ".[]()":
+    while (
+        end < len(sentence) and is_word_char(sentence[end]) or sentence[end] in ".[]()"
+    ):
         end += 1
 
     # Extract the word

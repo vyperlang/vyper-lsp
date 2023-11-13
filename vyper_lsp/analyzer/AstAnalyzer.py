@@ -1,8 +1,16 @@
+import logging
 import re
 from typing import List, Optional
 import warnings
 from packaging.version import Version
-from pygls.lsp.types import Diagnostic, Position, Range
+from lsprotocol.types import (
+    Diagnostic,
+    ParameterInformation,
+    Position,
+    Range,
+    SignatureHelp,
+    SignatureInformation,
+)
 from pygls.workspace import Document
 from vyper.compiler import CompilerData
 from vyper.exceptions import VyperException
@@ -13,10 +21,11 @@ from vyper_lsp.utils import (
     get_word_at_cursor,
     get_installed_vyper_version,
 )
-from pygls.lsp.types.language_features import (
+from lsprotocol.types import (
     CompletionItem,
     CompletionList,
     CompletionParams,
+    SignatureHelpParams,
 )
 from pygls.server import LanguageServer
 
@@ -26,14 +35,14 @@ compiled_pattern = re.compile(pattern)
 min_vyper_version = Version("0.3.7")
 
 # Available base types
-UNSIGNED_INTEGER_TYPES = {f"uint{8*(i+1)}" for i in range(32)}
-SIGNED_INTEGER_TYPES = {f"int{8*(i+1)}" for i in range(32)}
+UNSIGNED_INTEGER_TYPES = {f"uint{8*(i)}" for i in range(32, 0, -1)}
+SIGNED_INTEGER_TYPES = {f"int{8*(i)}" for i in range(32, 0, -1)}
 INTEGER_TYPES = UNSIGNED_INTEGER_TYPES | SIGNED_INTEGER_TYPES
 
-BYTES_M_TYPES = {f"bytes{i+1}" for i in range(32)}
+BYTES_M_TYPES = {f"bytes{i}" for i in range(32, 0, -1)}
 DECIMAL_TYPES = {"decimal"}
 
-BASE_TYPES = INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES | {"bool", "address"}
+BASE_TYPES = {"bool", "address"} | INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES
 
 DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
@@ -47,6 +56,47 @@ class AstAnalyzer(Analyzer):
         else:
             self.diagnostics_enabled = True
 
+    def signature_help(
+        self, doc: Document, params: SignatureHelpParams
+    ) -> SignatureHelp:
+        current_line = doc.lines[params.position.line]
+        word = get_word_at_cursor(current_line, params.position.character - 1)
+        expression = get_expression_at_cursor(
+            current_line, params.position.character - 1
+        )
+        logging.error(params)
+        logging.error(word)
+        logging.error(expression)
+
+        if expression.startswith("self."):
+            node = self.ast.find_function_declaration_node_for_name(word)
+            if node:
+                fn_name = node.name
+                arg_str = ", ".join(
+                    [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
+                )
+                fn_label = f"{fn_name}({arg_str})"
+                parameters = []
+                for arg in node.args.args:
+                    start_index = fn_label.find(arg.arg)
+                    end_index = start_index + len(arg.arg)
+                    parameters.append(
+                        ParameterInformation(
+                            label=(start_index, end_index), documentation=None
+                        )
+                    )
+                return SignatureHelp(
+                    signatures=[
+                        SignatureInformation(
+                            label=f"{fn_name}({arg_str})",
+                            parameters=parameters,
+                            documentation=None,
+                            active_parameter=1,
+                        )
+                    ],
+                    active_signature=0,
+                )
+
     def get_completions_in_doc(
         self, document: Document, params: CompletionParams
     ) -> CompletionList:
@@ -58,9 +108,12 @@ class AstAnalyzer(Analyzer):
             if params.context.trigger_character == ".":
                 # get element before the dot
                 element = current_line.split(" ")[-1].split(".")[0]
+
+                # internal functions and state variables
                 if element == "self":
                     for fn in self.ast.get_internal_functions():
                         items.append(CompletionItem(label=fn))
+                    # TODO: This should exclude constants and immutables
                     for var in self.ast.get_state_variables():
                         items.append(CompletionItem(label=var))
                 else:
@@ -68,21 +121,18 @@ class AstAnalyzer(Analyzer):
                     # For structs, we'll need to get the type of the variable
                     for attr in self.ast.get_attributes_for_symbol(element):
                         items.append(CompletionItem(label=attr))
-                completions = CompletionList(is_incomplete=False, items=[])
-                completions.add_items(items)
+                completions = CompletionList(is_incomplete=False, items=items)
                 return completions
             elif params.context.trigger_character == "@":
                 for dec in DECORATORS:
                     items.append(CompletionItem(label=dec))
-                completions = CompletionList(is_incomplete=False, items=[])
-                completions.add_items(items)
+                completions = CompletionList(is_incomplete=False, items=items)
                 return completions
             elif params.context.trigger_character == ":":
                 for typ in custom_types + list(BASE_TYPES):
                     items.append(CompletionItem(label=typ, insert_text=f" {typ}"))
 
-                completions = CompletionList(is_incomplete=False, items=[])
-                completions.add_items(items)
+                completions = CompletionList(is_incomplete=False, items=items)
                 return completions
             else:
                 if params.context.trigger_character == " ":
@@ -90,8 +140,7 @@ class AstAnalyzer(Analyzer):
                         for typ in custom_types + list(BASE_TYPES):
                             items.append(CompletionItem(label=typ))
 
-                        completions = CompletionList(is_incomplete=False, items=[])
-                        completions.add_items(items)
+                        completions = CompletionList(is_incomplete=False, items=items)
                         return completions
                 return CompletionList(is_incomplete=False, items=[])
 

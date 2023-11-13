@@ -3,7 +3,7 @@ from typing import List, Optional
 from lark import UnexpectedInput, UnexpectedToken
 from packaging.specifiers import Specifier
 from packaging.version import Version
-from pygls.lsp.types import (
+from lsprotocol.types import (
     CompletionList,
     CompletionParams,
     Diagnostic,

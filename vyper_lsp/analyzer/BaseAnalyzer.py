@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from pygls.lsp.types import CompletionList, CompletionParams, Diagnostic, Position
+from lsprotocol.types import CompletionList, CompletionParams, Diagnostic, Position
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 

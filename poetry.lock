@@ -331,24 +331,18 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "pygls"
-version = "0.13.1"
-description = "a pythonic generic language server (pronounced like \"pie glass\")."
+version = "1.1.2"
+description = "A pythonic generic language server (pronounced like 'pie glass')"
 category = "main"
 optional = false
-python-versions = "<3.12,>=3.7"
+python-versions = ">=3.7.9,<4"
 
 [package.dependencies]
-pydantic = [
-    {version = ">=1.9.1", markers = "python_version < \"3.11\""},
-    {version = ">=1.10.2", markers = "python_version >= \"3.11\""},
-]
-typeguard = ">=2.10.0,<3"
+lsprotocol = "2023.0.0b1"
+typeguard = ">=3.0.0,<5"
 
 [package.extras]
-dev = ["bandit (==1.7.4)", "flake8 (==4.0.1)", "mypy (==0.961)"]
-docs = ["sphinx (==5.0.1)", "sphinx-rtd-theme (==1.0.0)"]
-test = ["mock (==4.0.3)", "pytest (==7.1.2)", "pytest-asyncio (==0.18.3)"]
-ws = ["websockets (>=10.0.0,<11.0.0)"]
+ws = ["websockets (>=11.0.3,<12.0.0)"]
 
 [[package]]
 name = "pytest"
@@ -434,15 +428,18 @@ python-versions = ">=3.3"
 
 [[package]]
 name = "typeguard"
-version = "2.13.3"
+version = "4.1.5"
 description = "Run-time type checker for Python"
 category = "main"
 optional = false
-python-versions = ">=3.5.3"
+python-versions = ">=3.8"
+
+[package.dependencies]
+typing-extensions = {version = ">=4.7.0", markers = "python_version < \"3.12\""}
 
 [package.extras]
-doc = ["sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
-test = ["mypy", "pytest", "typing-extensions"]
+doc = ["Sphinx (>=7)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)"]
+test = ["coverage[toml] (>=7)", "mypy (>=1.2.0)", "pytest (>=7)"]
 
 [[package]]
 name = "typing-extensions"
@@ -554,7 +551,7 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "4b37cf28afa7f6247bb21baf1705fc801e1df0a3da1d674e11e6edfde869a590"
+content-hash = "aa955f3d2d579226a9f75ffb676d7417be77b70c43f3637cf8793423c9d0c908"
 
 [metadata.files]
 asttokens = [
@@ -861,8 +858,8 @@ pyflakes = [
     {file = "pyflakes-2.5.0.tar.gz", hash = "sha256:491feb020dca48ccc562a8c0cbe8df07ee13078df59813b83959cbdada312ea3"},
 ]
 pygls = [
-    {file = "pygls-0.13.1-py3-none-any.whl", hash = "sha256:37a1b5a45fe8934d992412f11d84d69d2ede55b52df2e34e6aa9342e5308d20e"},
-    {file = "pygls-0.13.1.tar.gz", hash = "sha256:b2d3f5cbf3d0e5dfa88b9150a371e3a0e619d7f25b77113aba4ca746c8385a66"},
+    {file = "pygls-1.1.2-py3-none-any.whl", hash = "sha256:783d29c93679bb6756772f2de9b9f53b1a6fdf3fba66aeca23e87aa8aab20ecf"},
+    {file = "pygls-1.1.2.tar.gz", hash = "sha256:93fe17c01fd03307774290e685e7fa25bc1411cd72f243ff33eef21927fd0ad5"},
 ]
 pytest = [
     {file = "pytest-7.4.3-py3-none-any.whl", hash = "sha256:0d009c083ea859a71b76adf7c1d502e4bc170b80a8ef002da5806527b9591fac"},
@@ -998,8 +995,8 @@ tree-sitter = [
     {file = "tree_sitter-0.20.2.tar.gz", hash = "sha256:0a6c06abaa55de174241a476b536173bba28241d2ea85d198d33aa8bf009f028"},
 ]
 typeguard = [
-    {file = "typeguard-2.13.3-py3-none-any.whl", hash = "sha256:5e3e3be01e887e7eafae5af63d1f36c849aaa94e3a0112097312aabfa16284f1"},
-    {file = "typeguard-2.13.3.tar.gz", hash = "sha256:00edaa8da3a133674796cf5ea87d9f4b4c367d77476e185e80251cc13dfbb8c4"},
+    {file = "typeguard-4.1.5-py3-none-any.whl", hash = "sha256:8923e55f8873caec136c892c3bed1f676eae7be57cdb94819281b3d3bc9c0953"},
+    {file = "typeguard-4.1.5.tar.gz", hash = "sha256:ea0a113bbc111bcffc90789ebb215625c963411f7096a7e9062d4e4630c155fd"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.8.0-py3-none-any.whl", hash = "sha256:8f92fc8806f9a6b641eaa5318da32b44d401efaac0f6678c9bc448ba3605faa0"},

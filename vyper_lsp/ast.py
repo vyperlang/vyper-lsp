@@ -1,7 +1,6 @@
 import copy
-from typing import Optional
-from pygls.lsp.types import Position
-from pygls.lsp.types.language_features import List
+from typing import Optional, List
+from lsprotocol.types import Position
 from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 

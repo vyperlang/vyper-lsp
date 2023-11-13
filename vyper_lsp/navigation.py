@@ -1,5 +1,5 @@
 import re
-from pygls.lsp.types.language_features import Position, Range
+from lsprotocol.types import Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document

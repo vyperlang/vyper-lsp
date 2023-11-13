@@ -1,4 +1,4 @@
-from pygls.lsp.types import Position
+from lsprotocol.types import Position
 from pygls.workspace import Document
 
 from vyper_lsp.ast import AST

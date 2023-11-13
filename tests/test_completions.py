@@ -1,4 +1,9 @@
-from pygls.lsp.types import CompletionContext, CompletionParams, Position
+from lsprotocol.types import (
+    CompletionContext,
+    CompletionParams,
+    Position,
+    TextDocumentIdentifier,
+)
 from pygls.workspace import Document
 
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
@@ -26,7 +31,7 @@ def baz():
     pos = Position(line=11, character=7)
     context = CompletionContext(trigger_character=".", trigger_kind=2)
     params = CompletionParams(
-        text_document={"uri": doc.uri, "source": src}, position=pos, context=context
+        text_document=TextDocumentIdentifier(doc.uri), position=pos, context=context
     )
 
     analyzer = AstAnalyzer(ast)

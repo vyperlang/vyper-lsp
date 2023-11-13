@@ -1,31 +1,32 @@
 import argparse
-from typing import Optional
+from typing import Optional, List
+import logging
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_OPEN,
+    TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_DECLARATION,
     TEXT_DOCUMENT_DEFINITION,
+    TEXT_DOCUMENT_IMPLEMENTATION,
     TEXT_DOCUMENT_REFERENCES,
-)
-from packaging.version import Version
-from pygls.lsp.methods import HOVER, IMPLEMENTATION, TEXT_DOCUMENT_DID_SAVE
-from pygls.lsp.types import (
+    TEXT_DOCUMENT_HOVER,
+    TEXT_DOCUMENT_SIGNATURE_HELP,
     CompletionOptions,
     CompletionParams,
-    DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams,
-)
-from pygls.lsp.types.language_features import (
     CompletionList,
     DeclarationParams,
     DefinitionParams,
     HoverParams,
-    List,
-    Location,
     Hover,
+    SignatureHelpOptions,
+    SignatureHelpParams,
+    Location,
+    DidChangeTextDocumentParams,
+    DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams,
 )
+from packaging.version import Version
 from pygls.server import LanguageServer
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
@@ -52,6 +53,10 @@ source_analyzer = SourceAnalyzer()
 
 
 debouncer = Debouncer(wait=0.5)
+
+logging.basicConfig(
+    level=logging.WARN, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 def check_minimum_vyper_version():
@@ -132,7 +137,7 @@ def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Locati
     ]
 
 
-@server.feature(HOVER)
+@server.feature(TEXT_DOCUMENT_HOVER)
 def hover(ls: LanguageServer, params: HoverParams):
     document = ls.workspace.get_document(params.text_document.uri)
     hover_info = ast_analyzer.hover_info(document, params.position)
@@ -140,7 +145,18 @@ def hover(ls: LanguageServer, params: HoverParams):
         return Hover(contents=hover_info, range=None)
 
 
-@server.feature(IMPLEMENTATION)
+@server.feature(
+    TEXT_DOCUMENT_SIGNATURE_HELP,
+    SignatureHelpOptions(trigger_characters=["("], retrigger_characters=[","]),
+)
+def signature_help(ls: LanguageServer, params: SignatureHelpParams):
+    document = ls.workspace.get_document(params.text_document.uri)
+    signature_info = ast_analyzer.signature_help(document, params)
+    if signature_info:
+        return signature_info
+
+
+@server.feature(TEXT_DOCUMENT_IMPLEMENTATION)
 def implementation(ls: LanguageServer, params: DefinitionParams):
     document = ls.workspace.get_document(params.text_document.uri)
     range = navigator.find_implementation(document, params.position)
