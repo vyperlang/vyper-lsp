@@ -20,6 +20,7 @@ from vyper_lsp.utils import (
     get_expression_at_cursor,
     get_word_at_cursor,
     get_installed_vyper_version,
+    get_internal_fn_name_at_cursor,
 )
 from lsprotocol.types import (
     CompletionItem,
@@ -46,6 +47,8 @@ BASE_TYPES = {"bool", "address"} | INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES
 
 DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
+logger = logging.getLogger("vyper-lsp")
+
 
 class AstAnalyzer(Analyzer):
     def __init__(self, ast: AST) -> None:
@@ -60,16 +63,15 @@ class AstAnalyzer(Analyzer):
         self, doc: Document, params: SignatureHelpParams
     ) -> SignatureHelp:
         current_line = doc.lines[params.position.line]
-        word = get_word_at_cursor(current_line, params.position.character - 1)
         expression = get_expression_at_cursor(
             current_line, params.position.character - 1
         )
-        logging.error(params)
-        logging.error(word)
-        logging.error(expression)
+        fn_name = get_internal_fn_name_at_cursor(
+            current_line, params.position.character - 1
+        )
 
         if expression.startswith("self."):
-            node = self.ast.find_function_declaration_node_for_name(word)
+            node = self.ast.find_function_declaration_node_for_name(fn_name)
             if node:
                 fn_name = node.name
                 arg_str = ", ".join(
@@ -77,6 +79,9 @@ class AstAnalyzer(Analyzer):
                 )
                 fn_label = f"{fn_name}({arg_str})"
                 parameters = []
+                if node.returns:
+                    line = doc.lines[node.lineno - 1]
+                    fn_label = line.removeprefix("def ").removesuffix(":\n")
                 for arg in node.args.args:
                     start_index = fn_label.find(arg.arg)
                     end_index = start_index + len(arg.arg)
@@ -85,13 +90,14 @@ class AstAnalyzer(Analyzer):
                             label=(start_index, end_index), documentation=None
                         )
                     )
+                active_parameter = current_line.split("(")[-1].count(",")
                 return SignatureHelp(
                     signatures=[
                         SignatureInformation(
-                            label=f"{fn_name}({arg_str})",
+                            label=fn_label,
                             parameters=parameters,
                             documentation=None,
-                            active_parameter=1,
+                            active_parameter=active_parameter or 0,
                         )
                     ],
                     active_signature=0,
@@ -150,7 +156,7 @@ class AstAnalyzer(Analyzer):
     def get_completions(
         self, ls: LanguageServer, params: CompletionParams
     ) -> CompletionList:
-        document = ls.workspace.get_document(params.text_document.uri)
+        document = ls.workspace.get_text_document(params.text_document.uri)
         return self.get_completions_in_doc(document, params)
 
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
@@ -213,7 +219,7 @@ class AstAnalyzer(Analyzer):
                         Diagnostic(
                             range=Range(
                                 start=Position(
-                                    line=e.lineno - 1, character=e.col_offset - 1
+                                    line=e.lineno - 1, character=e.col_offset
                                 ),
                                 end=Position(line=e.lineno - 1, character=e.col_offset),
                             ),
@@ -227,7 +233,7 @@ class AstAnalyzer(Analyzer):
                             Diagnostic(
                                 range=Range(
                                     start=Position(
-                                        line=a.lineno - 1, character=a.col_offset - 1
+                                        line=a.lineno - 1, character=a.col_offset
                                     ),
                                     end=Position(
                                         line=a.lineno - 1, character=a.col_offset

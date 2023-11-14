@@ -54,9 +54,23 @@ source_analyzer = SourceAnalyzer()
 
 debouncer = Debouncer(wait=0.5)
 
+logger = logging.getLogger("vyper-lsp")
+logger.setLevel(logging.INFO)
+
 logging.basicConfig(
-    level=logging.WARN, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+class CustomHandler(logging.Handler):
+    def __init__(self, ls):
+        super().__init__()
+        self.ls = ls
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        if self.ls:
+            self.ls.show_message_log(log_entry)
 
 
 def check_minimum_vyper_version():
@@ -70,7 +84,7 @@ def check_minimum_vyper_version():
 
 @debouncer.debounce
 def validate_doc(ls, params):
-    text_doc = ls.workspace.get_document(params.text_document.uri)
+    text_doc = ls.workspace.get_text_document(params.text_document.uri)
     source_diagnostics = source_analyzer.get_diagnostics(text_doc)
     ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
     ls.publish_diagnostics(
@@ -84,6 +98,8 @@ async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
     check_minimum_vyper_version()
     ls.show_message("Vyper Language Server started")
     ls.show_message_log("Vyper Language Server started")
+    handler = CustomHandler(ls)
+    logger.addHandler(handler)
     validate_doc(ls, params)
 
 
@@ -98,7 +114,7 @@ async def did_save(ls: LanguageServer, params: DidSaveTextDocumentParams):
 
 
 @server.feature(
-    TEXT_DOCUMENT_COMPLETION, CompletionOptions(trigger_characters=[":", ".", "@", " "])
+    TEXT_DOCUMENT_COMPLETION, CompletionOptions(trigger_characters=[":", ".", "@"])
 )
 def completions(ls, params: CompletionParams) -> CompletionList:
     return completer.get_completions(ls, params)
@@ -108,7 +124,7 @@ def completions(ls, params: CompletionParams) -> CompletionList:
 def go_to_declaration(
     ls: LanguageServer, params: DeclarationParams
 ) -> Optional[Location]:
-    document = ls.workspace.get_document(params.text_document.uri)
+    document = ls.workspace.get_text_document(params.text_document.uri)
     range = navigator.find_declaration(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)
@@ -122,7 +138,7 @@ def go_to_definition(
     ls: LanguageServer, params: DefinitionParams
 ) -> Optional[Location]:
     # TODO: Look for assignment nodes to find definition
-    document = ls.workspace.get_document(params.text_document.uri)
+    document = ls.workspace.get_text_document(params.text_document.uri)
     range = navigator.find_declaration(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)
@@ -130,7 +146,7 @@ def go_to_definition(
 
 @server.feature(TEXT_DOCUMENT_REFERENCES)
 def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Location]:
-    document = ls.workspace.get_document(params.text_document.uri)
+    document = ls.workspace.get_text_document(params.text_document.uri)
     return [
         Location(uri=params.text_document.uri, range=range)
         for range in navigator.find_references(document, params.position)
@@ -139,7 +155,7 @@ def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Locati
 
 @server.feature(TEXT_DOCUMENT_HOVER)
 def hover(ls: LanguageServer, params: HoverParams):
-    document = ls.workspace.get_document(params.text_document.uri)
+    document = ls.workspace.get_text_document(params.text_document.uri)
     hover_info = ast_analyzer.hover_info(document, params.position)
     if hover_info:
         return Hover(contents=hover_info, range=None)
@@ -147,10 +163,10 @@ def hover(ls: LanguageServer, params: HoverParams):
 
 @server.feature(
     TEXT_DOCUMENT_SIGNATURE_HELP,
-    SignatureHelpOptions(trigger_characters=["("], retrigger_characters=[","]),
+    SignatureHelpOptions(trigger_characters=["("], retrigger_characters=[",", " "]),
 )
 def signature_help(ls: LanguageServer, params: SignatureHelpParams):
-    document = ls.workspace.get_document(params.text_document.uri)
+    document = ls.workspace.get_text_document(params.text_document.uri)
     signature_info = ast_analyzer.signature_help(document, params)
     if signature_info:
         return signature_info
@@ -158,7 +174,7 @@ def signature_help(ls: LanguageServer, params: SignatureHelpParams):
 
 @server.feature(TEXT_DOCUMENT_IMPLEMENTATION)
 def implementation(ls: LanguageServer, params: DefinitionParams):
-    document = ls.workspace.get_document(params.text_document.uri)
+    document = ls.workspace.get_text_document(params.text_document.uri)
     range = navigator.find_implementation(document, params.position)
     if range:
         return Location(uri=params.text_document.uri, range=range)

@@ -1,9 +1,12 @@
+import logging
 import re
 from pathlib import Path
 from importlib.metadata import version
 from packaging.version import Version
 
 from vyper.compiler import CompilerData
+
+logger = logging.getLogger("vyper-lsp")
 
 
 def get_installed_vyper_version():
@@ -61,7 +64,49 @@ def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
     return word
 
 
+def _check_if_cursor_is_within_parenthesis(sentence: str, cursor_index: int) -> bool:
+    start = cursor_index
+    end = cursor_index
+
+    # Find the start of the word
+    # TODO: this is a hacky way to do this, should be refactored
+    while start > 0 and sentence[start] != "(":
+        start -= 1
+
+    # Find the end of the word
+    # TODO: this is a hacky way to do this, should be refactored
+    while end < len(sentence) and sentence[end] != ")":
+        end += 1
+
+    if start < cursor_index and cursor_index < end:
+        return True
+    return False
+
+
+def _get_entire_function_call(sentence: str, cursor_index: int) -> str:
+    start = cursor_index
+    end = cursor_index
+
+    # Find the start of the word
+    # only skip spaces if we're within the parenthesis
+    while start > 0 and sentence[start - 1] != "(":
+        start -= 1
+
+    while start > 0 and sentence[start - 1] != " ":
+        start -= 1
+
+    # Find the end of the word
+    while end < len(sentence) and sentence[end] != ")":
+        end += 1
+
+    fn_call = sentence[start:end]
+    return fn_call
+
+
 def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
+    if _check_if_cursor_is_within_parenthesis(sentence, cursor_index):
+        return _get_entire_function_call(sentence, cursor_index)
+
     # does the same thing as get_word_at_cursor but includes . and [ and ] in the expression
     start = cursor_index
     end = cursor_index
@@ -82,6 +127,13 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
 
     # Extract the word
     word = sentence[start:end]
+
+    return word
+
+
+def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> str:
+    # TODO: dont assume the fn call is at the end of the line
+    word = sentence.split("(")[0].split(" ")[-1].strip().split("self.")[-1]
 
     return word
 
