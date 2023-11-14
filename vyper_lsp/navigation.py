@@ -1,3 +1,4 @@
+import logging
 import re
 from lsprotocol.types import Position, Range
 from typing import List, Optional
@@ -8,6 +9,8 @@ from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
 
 ENUM_VARIANT_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)")
+
+logger = logging.getLogger("vyper-lsp")
 
 
 # this class should abstract away all the AST stuff
@@ -167,10 +170,14 @@ class ASTNavigator:
 
     def find_implementation(self, document: Document, pos: Position) -> Optional[Range]:
         og_line = document.lines[pos.line]
+        logger.info(f"finding implementation for {og_line}")
         word = get_word_at_cursor(og_line, pos.character)
         expression = get_expression_at_cursor(og_line, pos.character)
+        logger.info(f"word: {word}")
+        logger.info(f"expression: {expression}")
 
         if "(" not in expression:
+            logger.info("no parens in expression")
             return None
 
         if expression.startswith("self."):

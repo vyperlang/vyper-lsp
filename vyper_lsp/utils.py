@@ -78,7 +78,7 @@ def _check_if_cursor_is_within_parenthesis(sentence: str, cursor_index: int) -> 
     while end < len(sentence) and sentence[end] != ")":
         end += 1
 
-    if start < cursor_index and cursor_index < end:
+    if start != 0 and start < cursor_index and cursor_index < end:
         return True
     return False
 
@@ -89,9 +89,11 @@ def _get_entire_function_call(sentence: str, cursor_index: int) -> str:
 
     # Find the start of the word
     # only skip spaces if we're within the parenthesis
+    logger.info(sentence[start])
     while start > 0 and sentence[start - 1] != "(":
         start -= 1
 
+    logger.info(sentence[start])
     while start > 0 and sentence[start - 1] != " ":
         start -= 1
 
@@ -100,11 +102,13 @@ def _get_entire_function_call(sentence: str, cursor_index: int) -> str:
         end += 1
 
     fn_call = sentence[start:end]
+    logger.info(fn_call)
     return fn_call
 
 
 def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     if _check_if_cursor_is_within_parenthesis(sentence, cursor_index):
+        logger.info("cursor is within parenthesis")
         return _get_entire_function_call(sentence, cursor_index)
 
     # does the same thing as get_word_at_cursor but includes . and [ and ] in the expression
