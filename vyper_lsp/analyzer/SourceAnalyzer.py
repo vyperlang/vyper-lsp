@@ -21,7 +21,7 @@ from pathlib import Path
 from lark import Lark
 from vyper.ast.grammar import PythonIndenter
 
-GRAMMAR_FILE_PATH = Path(__file__).parent.parent.parent / "grammar" / "grammar.lark"
+GRAMMAR_FILE_PATH = Path(__file__).parent.parent / "grammar" / "grammar.lark"
 GRAMMAR = GRAMMAR_FILE_PATH.read_text()
 
 parser = Lark(GRAMMAR, parser="lalr", start="module", postlex=PythonIndenter())
