@@ -30,6 +30,25 @@ In your terminal, run `which vyper-lsp`. If installation was succesful, you shou
 
 ## Editor Setup
 
+### Emacs
+
+The following emacs lisp snippet will create a Vyper mode derived from Python Mode, and sets up vyper-lsp.
+
+``` emacs-lisp
+(define-derived-mode vyper-mode python-mode "Vyper" "Major mode for editing Vyper.")
+
+(add-to-list 'auto-mode-alist '("\\.vy\\'" . vyper-mode))
+
+(with-eval-after-load 'lsp-mode
+  (add-to-list 'lsp-language-id-configuration
+               '(vyper-mode . "vyper"))
+  (lsp-register-client
+   (make-lsp-client :new-connection
+                    (lsp-stdio-connection `(,(executable-find "vyper-lsp")))
+                    :activation-fn (lsp-activate-on "vyper")
+                    :server-id 'vyper-lsp)))
+```
+
 ### Neovim
 
 Add the following to your `neovim` lua config.
@@ -73,4 +92,4 @@ vim.api.nvim_set_keymap('n', ']d', '<Cmd>lua vim.lsp.diagnostic.goto_next()<CR>'
 
 ### VS Code
 
-Coming Soon
+See `vyper-lsp` VS Code extension
