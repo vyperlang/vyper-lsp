@@ -83,7 +83,12 @@ def check_minimum_vyper_version():
 
 
 @debouncer.debounce
-def validate_doc(ls, params):
+def validate_doc(
+    ls,
+    params: DidOpenTextDocumentParams
+    | DidChangeTextDocumentParams
+    | DidSaveTextDocumentParams,
+):
     text_doc = ls.workspace.get_text_document(params.text_document.uri)
     source_diagnostics = source_analyzer.get_diagnostics(text_doc)
     ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
