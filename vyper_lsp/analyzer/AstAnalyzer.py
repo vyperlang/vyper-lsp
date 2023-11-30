@@ -174,6 +174,8 @@ class AstAnalyzer(Analyzer):
                     arg_str = ", ".join(
                         [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
                     )
+                    if node.returns:
+                        return f"(Internal Function) **{fn_name}**({arg_str}) -> **{node.returns.id}**"
                     return f"(Internal Function) **{fn_name}**({arg_str})"
             else:
                 node = self.ast.find_state_variable_declaration_node_for_name(word)
