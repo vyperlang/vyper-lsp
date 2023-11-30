@@ -101,10 +101,9 @@ def validate_doc(
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
 async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
     check_minimum_vyper_version()
-    ls.show_message("Vyper Language Server started")
-    ls.show_message_log("Vyper Language Server started")
     handler = CustomHandler(ls)
     logger.addHandler(handler)
+    logger.info("Vyper Language Server started")
     validate_doc(ls, params)
 
 
@@ -135,7 +134,6 @@ def go_to_declaration(
         return Location(uri=params.text_document.uri, range=range)
     else:
         ls.show_message("No declaration found")
-        ls.show_message_log("No declaration found")
 
 
 @server.feature(TEXT_DOCUMENT_DEFINITION)
