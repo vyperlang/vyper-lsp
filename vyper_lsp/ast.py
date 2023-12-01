@@ -1,8 +1,11 @@
 import copy
+import logging
 from typing import Optional, List
 from lsprotocol.types import Position
 from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
+
+logger = logging.getLogger("vyper-lsp")
 
 
 class AST:
@@ -30,17 +33,17 @@ class AST:
             # out from under us when folding stuff happens
             self.ast_data = copy.deepcopy(compiler_data.vyper_module)
         except Exception as e:
-            print(f"Error generating AST, {e}")
+            logger.error(f"Error generating AST, {e}")
             pass
         try:
             self.ast_data_unfolded = compiler_data.vyper_module_unfolded
         except Exception as e:
-            print(f"Error generating unfolded AST, {e}")
+            logger.error(f"Error generating unfolded AST, {e}")
             pass
         try:
             self.ast_data_folded = compiler_data.vyper_module_folded
         except Exception as e:
-            print(f"Error generating folded AST, {e}")
+            logger.error(f"Error generating folded AST, {e}")
             pass
 
     @property

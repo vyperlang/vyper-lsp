@@ -60,6 +60,19 @@ class AstAnalyzer(Analyzer):
         else:
             self.diagnostics_enabled = True
 
+    def _range_from_exception(self, node: VyperException) -> Range:
+        return Range(
+            start=Position(line=node.lineno - 1, character=node.col_offset),
+            end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+        )
+
+    def _diagnostic_from_exception(self, node: VyperException) -> Diagnostic:
+        return Diagnostic(
+            range=self._range_from_exception(node),
+            message=str(node),
+            severity=1,
+        )
+
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
     ) -> SignatureHelp:
@@ -254,34 +267,10 @@ class AstAnalyzer(Analyzer):
                 compiler_data.vyper_module_folded
             except VyperException as e:
                 if e.lineno is not None and e.col_offset is not None:
-                    diagnostics.append(
-                        Diagnostic(
-                            range=Range(
-                                start=Position(
-                                    line=e.lineno - 1, character=e.col_offset
-                                ),
-                                end=Position(line=e.lineno - 1, character=e.col_offset),
-                            ),
-                            message=str(e),
-                            severity=1,
-                        )
-                    )
+                    diagnostics.append(self._diagnostic_from_exception(e))
                 else:
                     for a in e.annotations:
-                        diagnostics.append(
-                            Diagnostic(
-                                range=Range(
-                                    start=Position(
-                                        line=a.lineno - 1, character=a.col_offset
-                                    ),
-                                    end=Position(
-                                        line=a.lineno - 1, character=a.col_offset
-                                    ),
-                                ),
-                                message=e.message,
-                                severity=1,
-                            )
-                        )
+                        diagnostics.append(self._diagnostic_from_exception(a))
             for warning in w:
                 match = compiled_pattern.match(str(warning.message))
                 if not match:
