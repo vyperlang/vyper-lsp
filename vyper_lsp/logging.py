@@ -15,5 +15,6 @@ class LanguageServerLogHandler(logging.Handler):
 
     def emit(self, record):
         log_entry = self.format(record)
-        if self.ls:
-            self.ls.show_message_log(log_entry)
+        if not self.ls:
+            return
+        self.ls.show_message_log(log_entry)

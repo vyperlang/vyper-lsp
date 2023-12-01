@@ -124,17 +124,17 @@ def go_to_definition(
 ) -> Optional[Location]:
     # TODO: Look for assignment nodes to find definition
     document = ls.workspace.get_text_document(params.text_document.uri)
-    range = navigator.find_declaration(document, params.position)
-    if range:
-        return Location(uri=params.text_document.uri, range=range)
+    range_ = navigator.find_declaration(document, params.position)
+    if range_:
+        return Location(uri=params.text_document.uri, range=range_)
 
 
 @server.feature(TEXT_DOCUMENT_REFERENCES)
 def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Location]:
     document = ls.workspace.get_text_document(params.text_document.uri)
     return [
-        Location(uri=params.text_document.uri, range=range)
-        for range in navigator.find_references(document, params.position)
+        Location(uri=params.text_document.uri, range=range_)
+        for range_ in navigator.find_references(document, params.position)
     ]
 
 
@@ -160,8 +160,8 @@ def signature_help(ls: LanguageServer, params: SignatureHelpParams):
 @server.feature(TEXT_DOCUMENT_IMPLEMENTATION)
 def implementation(ls: LanguageServer, params: DefinitionParams):
     document = ls.workspace.get_text_document(params.text_document.uri)
-    range = navigator.find_implementation(document, params.position)
-    if range:
+    range_ = navigator.find_implementation(document, params.position)
+    if range_:
         return Location(uri=params.text_document.uri, range=range)
 
 

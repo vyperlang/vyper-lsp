@@ -43,13 +43,22 @@ def is_attribute_access(line):
 
 def is_word_char(char):
     # true for alnum and underscore
+    # REVIEW: another possibility is `char in <possible char string>`
+    # ex. `char in "_" + string.ascii_letters + string.digits`.
+    # the constants can be factored out for small performance
     return char.isalnum() or char == "_"
+
+
+# REVIEW: these get_.*_at_cursor helpers would benefit from having
+# access to as much cursor information as possible (ex. line number),
+# it could open up some possibilies when refactoring for performance
 
 
 def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
     start = cursor_index
     end = cursor_index
 
+    # TODO: this could be a perf hotspot
     # Find the start of the word
     while start > 0 and is_word_char(sentence[start - 1]):
         start -= 1
@@ -70,16 +79,19 @@ def _check_if_cursor_is_within_parenthesis(sentence: str, cursor_index: int) -> 
 
     # Find the start of the word
     # TODO: this is a hacky way to do this, should be refactored
+    # REVIEW: could be reversed(sentence[:start]).find("(")
     while start > 0 and sentence[start] != "(":
         start -= 1
 
     # Find the end of the word
     # TODO: this is a hacky way to do this, should be refactored
+    # REVIEW: could be sentence[cursor_index:].find(")")
     while end < len(sentence) and sentence[end] != ")":
         end += 1
 
     if start != 0 and start < cursor_index and cursor_index < end:
         return True
+
     return False
 
 
@@ -89,6 +101,7 @@ def _get_entire_function_call(sentence: str, cursor_index: int) -> str:
 
     # Find the start of the word
     # only skip spaces if we're within the parenthesis
+    # REVIEW: what about `foo (x)`?
     while start > 0 and sentence[start - 1] != "(":
         start -= 1
 
@@ -112,6 +125,7 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     end = cursor_index
 
     # Find the start of the word
+    # REVIEW: maybe sentence[start - 1] in `_WORD_CHARS + ".[]()"`
     while (
         start > 0
         and is_word_char(sentence[start - 1])
@@ -133,13 +147,14 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
 
 def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> str:
     # TODO: dont assume the fn call is at the end of the line
+    # REVIEW: make cases like self.foo(self.bar()) work
     word = sentence.split("(")[0].split(" ")[-1].strip().split("self.")[-1]
 
     return word
 
 
 def extract_enum_name(line: str):
-    match = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
-    if match:
-        return match.group(1)
+    m = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
+    if m:
+        return m.group(1)
     return None
