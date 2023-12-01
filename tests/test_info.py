@@ -16,7 +16,7 @@ def bar():
 """
     ast.build_ast(src)
 
-    doc = Document(uri="examples/Foo.vy", source=src)
+    doc = Document(uri="<inline source code>", source=src)
 
     pos = Position(line=7, character=13)
     params = SignatureHelpParams(

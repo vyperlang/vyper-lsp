@@ -27,7 +27,7 @@ def baz():
     self.
 """
 
-    doc = Document(uri="examples/Foo.vy", source=src)
+    doc = Document(uri="<inline source code>", source=src)
     pos = Position(line=11, character=7)
     context = CompletionContext(trigger_character=".", trigger_kind=2)
     params = CompletionParams(
@@ -62,7 +62,7 @@ def baz():
     x: Foo = Foo.
 """
 
-    doc = Document(uri="examples/Foo.vy", source=src)
+    doc = Document(uri="<inline source code>", source=src)
     pos = Position(line=15, character=18)
     context = CompletionContext(trigger_character=".", trigger_kind=2)
     params = CompletionParams(
