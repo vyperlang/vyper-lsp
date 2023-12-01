@@ -1,6 +1,7 @@
 import argparse
 from typing import Optional, List
 import logging
+from .logging import LanguageServerLogHandler
 from lsprotocol.types import (
     TEXT_DOCUMENT_COMPLETION,
     TEXT_DOCUMENT_DID_CHANGE,
@@ -55,25 +56,9 @@ source_analyzer = SourceAnalyzer()
 debouncer = Debouncer(wait=0.5)
 
 logger = logging.getLogger("vyper-lsp")
-logger.setLevel(logging.INFO)
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 
 
-class CustomHandler(logging.Handler):
-    def __init__(self, ls):
-        super().__init__()
-        self.ls = ls
-
-    def emit(self, record):
-        log_entry = self.format(record)
-        if self.ls:
-            self.ls.show_message_log(log_entry)
-
-
-def check_minimum_vyper_version():
+def _check_minimum_vyper_version():
     vy_version = get_installed_vyper_version()
     min_version = Version("0.3.7")
     if vy_version < min_version:
@@ -90,18 +75,15 @@ def validate_doc(
     | DidSaveTextDocumentParams,
 ):
     text_doc = ls.workspace.get_text_document(params.text_document.uri)
-    source_diagnostics = source_analyzer.get_diagnostics(text_doc)
     ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
-    ls.publish_diagnostics(
-        params.text_document.uri, source_diagnostics + ast_diagnostics
-    )
+    ls.publish_diagnostics(params.text_document.uri, ast_diagnostics)
     ast.update_ast(text_doc)
 
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
 async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
-    check_minimum_vyper_version()
-    handler = CustomHandler(ls)
+    _check_minimum_vyper_version()
+    handler = LanguageServerLogHandler(ls)
     logger.addHandler(handler)
     logger.info("Vyper Language Server started")
     validate_doc(ls, params)
