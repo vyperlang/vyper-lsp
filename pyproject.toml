@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vyper-lsp"
-version = "0.0.6"
+version = "0.0.7"
 description = "Language server for Vyper, a pythonic smart contract language"
 authors = ["z80 <z80@ophy.xyz>"]
 license = "MIT"
