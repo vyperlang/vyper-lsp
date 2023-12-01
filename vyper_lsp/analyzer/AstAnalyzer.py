@@ -14,6 +14,7 @@ from lsprotocol.types import (
 from pygls.workspace import Document
 from vyper.compiler import CompilerData
 from vyper.exceptions import VyperException
+from vyper.ast import nodes
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
@@ -159,6 +160,29 @@ class AstAnalyzer(Analyzer):
         document = ls.workspace.get_text_document(params.text_document.uri)
         return self.get_completions_in_doc(document, params)
 
+    def _is_internal_fn(self, expression: str) -> bool:
+        return expression.startswith("self.") and "(" in expression
+
+    def _is_state_var(self, expression: str) -> bool:
+        return expression.startswith("self.") and "(" not in expression
+
+    def _format_fn_signature(self, node: nodes.FunctionDef) -> str:
+        fn_name = node.name
+        arg_str = ", ".join(
+            [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
+        )
+        if node.returns:
+            if isinstance(node.returns, nodes.Subscript):
+                return_type_str = (
+                    f"{node.returns.value.id}[{node.returns.slice.value.value}]"
+                )
+            else:
+                return_type_str = node.returns.id
+            return (
+                f"(Internal Function) **{fn_name}**({arg_str}) -> **{return_type_str}**"
+            )
+        return f"(Internal Function) **{fn_name}**({arg_str})"
+
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
         if len(document.lines) < pos.line:
             return None
@@ -166,42 +190,34 @@ class AstAnalyzer(Analyzer):
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
 
-        if full_word.startswith("self."):
-            if "(" in full_word:
-                node = self.ast.find_function_declaration_node_for_name(word)
-                if node:
-                    fn_name = node.name
-                    arg_str = ", ".join(
-                        [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
-                    )
-                    if node.returns:
-                        return f"(Internal Function) **{fn_name}**({arg_str}) -> **{node.returns.id}**"
-                    return f"(Internal Function) **{fn_name}**({arg_str})"
-            else:
-                node = self.ast.find_state_variable_declaration_node_for_name(word)
-                if node:
-                    variable_type = node.annotation.id
-                    return f"(State Variable) **{word}** : **{variable_type}**"
+        if self._is_internal_fn(full_word):
+            node = self.ast.find_function_declaration_node_for_name(word)
+            if node:
+                return self._format_fn_signature(node)
+        elif self._is_state_var(full_word):
+            node = self.ast.find_state_variable_declaration_node_for_name(word)
+            if node:
+                variable_type = node.annotation.id
+                return f"(State Variable) **{word}** : **{variable_type}**"
+        elif word in self.ast.get_structs():
+            node = self.ast.find_type_declaration_node_for_name(word)
+            if node:
+                return f"(Struct) **{word}**"
+        elif word in self.ast.get_enums():
+            node = self.ast.find_type_declaration_node_for_name(word)
+            if node:
+                return f"(Enum) **{word}**"
+        elif word in self.ast.get_events():
+            node = self.ast.find_type_declaration_node_for_name(word)
+            if node:
+                return f"(Event) **{word}**"
+        elif word in self.ast.get_constants():
+            node = self.ast.find_state_variable_declaration_node_for_name(word)
+            if node:
+                variable_type = node.annotation.id
+                return f"(Constant) **{word}** : **{variable_type}**"
         else:
-            if word in self.ast.get_structs():
-                node = self.ast.find_type_declaration_node_for_name(word)
-                if node:
-                    return f"(Struct) **{word}**"
-            elif word in self.ast.get_enums():
-                node = self.ast.find_type_declaration_node_for_name(word)
-                if node:
-                    return f"(Enum) **{word}**"
-            elif word in self.ast.get_events():
-                node = self.ast.find_type_declaration_node_for_name(word)
-                if node:
-                    return f"(Event) **{word}**"
-            elif word in self.ast.get_constants():
-                node = self.ast.find_state_variable_declaration_node_for_name(word)
-                if node:
-                    variable_type = node.annotation.id
-                    return f"(Constant) **{word}** : **{variable_type}**"
-            else:
-                return None
+            return None
 
     def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
         diagnostics = []

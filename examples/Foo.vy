@@ -33,13 +33,13 @@ def __init__():
 
 @external
 def foo() -> uint256:
-    return self.bar(10, 12)
+    return self.bar(10, 12)[0]
 
 x: uint256
 
 @internal
-def bar(x: uint256, y: uint256) -> uint256:
-    return self.x + x + y
+def bar(x: uint256, y: uint256) -> uint256[2]:
+    return [self.x + x + y, x]
 
 @external
 def baz(a: uint256, b: uint256) -> Bar:
