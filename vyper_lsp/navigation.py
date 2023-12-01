@@ -18,7 +18,7 @@ logger = logging.getLogger("vyper-lsp")
 #
 # the navigator should mainly return Ranges
 class ASTNavigator:
-    def __init__(self, ast):
+    def __init__(self, ast: AST):
         self.ast = ast
 
     def _create_range_from_node(self, node: VyperNode) -> Range:
@@ -101,6 +101,16 @@ class ASTNavigator:
             references.append(range)
         return references
 
+    def _match_enum_variant(self, full_word: str) -> Optional[re.Match]:
+        match = ENUM_VARIANT_PATTERN.match(full_word)
+        if (
+            match
+            and match.group(1) in self.ast.get_enums()
+            and match.group(2) in self.ast.get_enum_variants(match.group(1))
+        ):
+            return match
+        return None
+
     def find_declaration(self, document: Document, pos: Position) -> Optional[Range]:
         if self.ast.ast_data is None:
             return None
@@ -127,12 +137,8 @@ class ASTNavigator:
             if range:
                 return range
             else:
-                match = ENUM_VARIANT_PATTERN.match(full_word)
-                if (
-                    match
-                    and match.group(1) in self.ast.get_enums()
-                    and match.group(2) in self.ast.get_enum_variants(match.group(1))
-                ):
+                match = self._match_enum_variant(full_word)
+                if match:
                     return self.find_type_declaration(match.group(1))
 
     def find_implementation(self, document: Document, pos: Position) -> Optional[Range]:

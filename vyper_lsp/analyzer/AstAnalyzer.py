@@ -166,11 +166,32 @@ class AstAnalyzer(Analyzer):
     def _is_state_var(self, expression: str) -> bool:
         return expression.startswith("self.") and "(" not in expression
 
+    def _format_arg(self, arg: nodes.arg) -> str:
+        if arg.annotation is None:
+            return arg.arg
+
+        # Handle case when annotation is a subscript (e.g., List[int])
+        if isinstance(arg.annotation, nodes.Subscript):
+            annotation_base = arg.annotation.value.id  # e.g., 'List' in 'List[int]'
+
+            # Check if the subscript's slice is a simple name
+            if isinstance(arg.annotation.slice.value, nodes.Name):
+                annotation_subscript = (
+                    arg.annotation.slice.value.id
+                )  # e.g., 'int' in 'List[int]'
+            else:
+                annotation_subscript = (
+                    arg.annotation.slice.value.value
+                )  # Handle other subscript types
+
+            return f"{arg.arg}: {annotation_base}[{annotation_subscript}]"
+
+        # Default case for simple annotations
+        return f"{arg.arg}: {arg.annotation.id}"
+
     def _format_fn_signature(self, node: nodes.FunctionDef) -> str:
         fn_name = node.name
-        arg_str = ", ".join(
-            [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
-        )
+        arg_str = ", ".join([self._format_arg(arg) for arg in node.args.args])
         if node.returns:
             if isinstance(node.returns, nodes.Subscript):
                 return_type_str = (
