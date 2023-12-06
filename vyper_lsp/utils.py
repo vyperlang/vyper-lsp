@@ -139,9 +139,9 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
 def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> str:
     # TODO: dont assume the fn call is at the end of the line
     # REVIEW: make cases like self.foo(self.bar()) work
-    word = sentence.split("(")[0].split(" ")[-1].strip().split("self.")[-1]
-
-    return word
+    expression = get_expression_at_cursor(sentence, cursor_index)
+    if is_internal_fn(expression):
+        return expression.split(".")[1].split("(")[0].strip()
 
 
 def extract_enum_name(line: str):
