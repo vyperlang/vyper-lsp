@@ -131,10 +131,37 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
 
 
 def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> Optional[str]:
-    # REVIEW: make nested cases like self.foo(self.bar()) work
-    expression = get_expression_at_cursor(sentence, cursor_index)
-    if is_internal_fn(expression):
-        return expression.split(".")[1].split("(")[0].strip()
+    # Split the sentence into segments at each 'self.'
+    segments = sentence.split("self.")
+
+    # Accumulated length to keep track of the cursor's position relative to the original sentence
+    accumulated_length = 0
+
+    for segment in segments:
+        if not segment:
+            accumulated_length += 5  # Length of 'self.'
+            continue
+
+        # Update the accumulated length for each segment
+        segment_start = accumulated_length
+        segment_end = accumulated_length + len(segment)
+        accumulated_length = segment_end + 5  # Update for next segment
+
+        # Check if the cursor is within the current segment
+        if segment_start <= cursor_index <= segment_end:
+            # Extract the function name from the segment
+            function_name = re.findall(r"\b\w+\s*\(", segment)
+            if function_name:
+                # Take the function name closest to the cursor
+                closest_fn = min(
+                    function_name,
+                    key=lambda fn: abs(
+                        cursor_index - (segment_start + segment.find(fn))
+                    ),
+                )
+                return closest_fn.split("(")[0].strip()
+
+    return None
 
 
 def extract_enum_name(line: str):

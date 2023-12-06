@@ -39,4 +39,4 @@ def test_get_internal_fn_name_at_cursor():
     assert utils.get_internal_fn_name_at_cursor(text, 21) == "baz"
 
     text = "self.foo(self.bar())"
-    assert utils.get_internal_fn_name_at_cursor(text, 0) == "foo"
+    assert utils.get_internal_fn_name_at_cursor(text, 7) == "foo"

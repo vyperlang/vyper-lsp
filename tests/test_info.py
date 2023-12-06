@@ -13,6 +13,14 @@ def foo(x: int128, y: int128) -> int128:
 @external
 def bar():
     self.foo(1, 2)
+
+@internal
+def baz(x: int128) -> int128:
+    return x
+
+@external
+def foobar():
+    self.foo(self.baz(1), 2)
 """
     ast.build_ast(src)
 
@@ -29,6 +37,16 @@ def bar():
     assert sig_help.active_signature == 0
     assert sig_help.signatures[0].active_parameter == 1
     assert sig_help.signatures[0].label == "foo(x: int128, y: int128) -> int128"
+
+    pos = Position(line=15, character=22)
+    params = SignatureHelpParams(
+        text_document=TextDocumentIdentifier(doc.uri), position=pos
+    )
+    sig_help = analyzer.signature_help(doc, params)
+    assert sig_help
+    assert sig_help.active_signature == 0
+    assert sig_help.signatures[0].active_parameter == 1
+    assert sig_help.signatures[0].label == "baz(x: int128) -> int128"
 
 
 def test_hover(ast: AST):
