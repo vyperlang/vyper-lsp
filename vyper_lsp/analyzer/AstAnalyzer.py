@@ -188,21 +188,11 @@ class AstAnalyzer(Analyzer):
         return f"{arg.arg}: {arg.annotation.id}"
 
     def _format_fn_signature(self, node: nodes.FunctionDef) -> str:
-        fn_name = node.name
-        arg_str = ", ".join([self._format_arg(arg) for arg in node.args.args])
-        if node.returns:
-            # REVIEW: maybe node.node_source_code will be useful here
-            # (i'm not sure it is always guaranteed to be available though)
-            if isinstance(node.returns, nodes.Subscript):
-                return_type_str = (
-                    f"{node.returns.value.id}[{node.returns.slice.value.value}]"
-                )
-            else:
-                return_type_str = node.returns.id
-            return (
-                f"(Internal Function) **{fn_name}**({arg_str}) -> **{return_type_str}**"
-            )
-        return f"(Internal Function) **{fn_name}**({arg_str})"
+        pattern = r"def\s+(\w+)\((?:[^()]|\n)*\)(?:\s*->\s*[\w\[\], \n]+)?:"
+        match = re.search(pattern, node.node_source_code, re.MULTILINE)
+        if match:
+            function_def = match.group()
+            return f"(Internal Function) {function_def}"
 
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
         if len(document.lines) < pos.line:

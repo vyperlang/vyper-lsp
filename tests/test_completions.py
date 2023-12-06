@@ -1,6 +1,7 @@
 from lsprotocol.types import (
     CompletionContext,
     CompletionParams,
+    CompletionTriggerKind,
     Position,
     TextDocumentIdentifier,
 )
@@ -66,7 +67,7 @@ def baz():
     pos = Position(line=15, character=18)
     context = CompletionContext(trigger_character=".", trigger_kind=2)
     params = CompletionParams(
-        text_document={"uri": doc.uri, "source": src}, position=pos, context=context
+        text_document=TextDocumentIdentifier(uri=doc.uri), position=pos, context=context
     )
 
     analyzer = AstAnalyzer(ast)
@@ -74,3 +75,40 @@ def baz():
     assert len(completions.items) == 2
     assert "BAR" in [c.label for c in completions.items]
     assert "BAZ" in [c.label for c in completions.items]
+
+
+def test_completion_fn_decorator(ast):
+    src = """
+@internal
+def foo():
+    return
+
+@external
+def bar():
+    self.foo()
+"""
+    ast.build_ast(src)
+
+    src += """
+@
+"""
+
+    doc = Document(uri="<inline source code>", source=src)
+    pos = Position(line=8, character=1)
+    context = CompletionContext(
+        trigger_character="@", trigger_kind=CompletionTriggerKind.TriggerCharacter
+    )
+    params = CompletionParams(
+        text_document=TextDocumentIdentifier(uri=doc.uri), position=pos, context=context
+    )
+
+    analyzer = AstAnalyzer(ast)
+    completions = analyzer.get_completions_in_doc(doc, params)
+    assert len(completions.items) == 6
+    labels = [c.label for c in completions.items]
+    assert "internal" in labels
+    assert "external" in labels
+    assert "payable" in labels
+    assert "nonpayable" in labels
+    assert "view" in labels
+    assert "pure" in labels

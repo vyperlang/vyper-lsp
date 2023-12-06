@@ -3,6 +3,7 @@ import string
 import re
 from pathlib import Path
 from importlib.metadata import version
+from typing import Optional
 from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
 from vyper.ast import VyperNode
@@ -45,9 +46,7 @@ def is_attribute_access(line):
     return bool(re.match(reg, line.strip()))
 
 
-def is_word_char(char: str):
-    # true for alnum and underscore
-    return char in string.ascii_letters + string.digits + "_"
+_WORD_CHARS = string.ascii_letters + string.digits + "_"
 
 
 # REVIEW: these get_.*_at_cursor helpers would benefit from having
@@ -61,11 +60,11 @@ def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
 
     # TODO: this could be a perf hotspot
     # Find the start of the word
-    while start > 0 and is_word_char(sentence[start - 1]):
+    while start > 0 and sentence[start - 1] in _WORD_CHARS:
         start -= 1
 
     # Find the end of the word
-    while end < len(sentence) and is_word_char(sentence[end]):
+    while end < len(sentence) and sentence[end] in _WORD_CHARS:
         end += 1
 
     # Extract the word
@@ -118,16 +117,11 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     end = cursor_index
 
     # Find the start of the word
-    # REVIEW: maybe sentence[start - 1] in `_WORD_CHARS + ".[]()"`
-    while start > 0 and (
-        is_word_char(sentence[start - 1]) or sentence[start - 1] in ".[]()"
-    ):
+    while start > 0 and sentence[start - 1] in _WORD_CHARS + ".[]()":
         start -= 1
 
     # Find the end of the word
-    while end < len(sentence) and (
-        is_word_char(sentence[end]) or sentence[end] in ".[]()"
-    ):
+    while end < len(sentence) and sentence[end] in _WORD_CHARS + ".[]()":
         end += 1
 
     # Extract the word
@@ -136,9 +130,8 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     return word
 
 
-def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> str:
-    # TODO: dont assume the fn call is at the end of the line
-    # REVIEW: make cases like self.foo(self.bar()) work
+def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> Optional[str]:
+    # REVIEW: make nested cases like self.foo(self.bar()) work
     expression = get_expression_at_cursor(sentence, cursor_index)
     if is_internal_fn(expression):
         return expression.split(".")[1].split("(")[0].strip()
