@@ -129,16 +129,14 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
 
     # Find the start of the word
     # REVIEW: maybe sentence[start - 1] in `_WORD_CHARS + ".[]()"`
-    while (
-        start > 0
-        and is_word_char(sentence[start - 1])
-        or sentence[start - 1] in ".[]()"
+    while start > 0 and (
+        is_word_char(sentence[start - 1]) or sentence[start - 1] in ".[]()"
     ):
         start -= 1
 
     # Find the end of the word
-    while (
-        end < len(sentence) and is_word_char(sentence[end]) or sentence[end] in ".[]()"
+    while end < len(sentence) and (
+        is_word_char(sentence[end]) or sentence[end] in ".[]()"
     ):
         end += 1
 
