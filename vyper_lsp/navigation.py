@@ -75,50 +75,40 @@ class ASTNavigator:
         if self.ast.ast_data is None:
             return []
 
-        references = []
-
         og_line = doc.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
         expression = get_expression_at_cursor(og_line, pos.character)
-
         top_level_node = self.ast.find_top_level_node_at_pos(pos)
 
-        refs = []
-
-        # REVIEW: this can help with early returns
-        # ex.
-        # if word in self.ast.get_enums():
-        #    return finalize(self.ast.find_nodes_referencing_enum(word))
-        #
-        # if word in self.ast.get_structs() or word in self.ast.get_events():
-        #   return finalize(self.ast.find_nodes_referencing_struct(word))
-        # def finalize(refs):
-        #    return [_range_from_node(ref) for ref in refs]
+        def finalize(refs):
+            return [range_from_node(ref) for ref in refs]
 
         if word in self.ast.get_enums():
-            # find all references to this type
-            refs = self.ast.find_nodes_referencing_enum(word)
-        elif word in self.ast.get_structs() or word in self.ast.get_events():
-            refs = self.ast.find_nodes_referencing_struct(word)
-        elif self._is_internal_fn(og_line, word, expression):
-            refs = self.ast.find_nodes_referencing_internal_function(word)
-        elif self._is_constant_decl(og_line, word):
-            refs = self.ast.find_nodes_referencing_constant(word)
-        elif self._is_state_var_decl(og_line, word):
-            refs = self.ast.find_nodes_referencing_state_variable(word)
-        elif isinstance(top_level_node, EnumDef):
-            # find all references to this enum variant
-            refs = self.ast.find_nodes_referencing_enum_variant(
-                top_level_node.name, word
+            return finalize(self.ast.find_nodes_referencing_enum(word))
+
+        if word in self.ast.get_structs() or word in self.ast.get_events():
+            return finalize(self.ast.find_nodes_referencing_struct(word))
+
+        if self._is_internal_fn(og_line, word, expression):
+            return finalize(self.ast.find_nodes_referencing_internal_function(word))
+
+        if self._is_constant_decl(og_line, word):
+            return finalize(self.ast.find_nodes_referencing_constant(word))
+
+        if self._is_state_var_decl(og_line, word):
+            return finalize(self.ast.find_nodes_referencing_state_variable(word))
+
+        if isinstance(top_level_node, EnumDef):
+            return finalize(
+                self.ast.find_nodes_referencing_enum_variant(top_level_node.name, word)
             )
-        elif isinstance(top_level_node, FunctionDef):
-            refs = AST.from_node(top_level_node).find_nodes_referencing_symbol(word)
 
-        for ref in refs:
-            range_ = range_from_node(ref)
-            references.append(range_)
+        if isinstance(top_level_node, FunctionDef):
+            return finalize(
+                AST.from_node(top_level_node).find_nodes_referencing_symbol(word)
+            )
 
-        return references
+        return []
 
     def _match_enum_variant(self, full_word: str) -> Optional[re.Match]:
         match_ = ENUM_VARIANT_PATTERN.match(full_word)
