@@ -6,7 +6,11 @@ from typing import List, Optional
 from pygls.workspace import Document
 from vyper.ast import EnumDef, FunctionDef, VyperNode
 from vyper_lsp.ast import AST
-from vyper_lsp.utils import get_expression_at_cursor, get_word_at_cursor
+from vyper_lsp.utils import (
+    get_expression_at_cursor,
+    get_word_at_cursor,
+    range_from_node,
+)
 
 ENUM_VARIANT_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)")
 
@@ -21,19 +25,10 @@ class ASTNavigator:
     def __init__(self, ast: AST):
         self.ast = ast
 
-    # REVIEW: rename to `_range_from_node`
-    # maybe belongs in utils
-    # pure function (does not need `self`)
-    def _create_range_from_node(self, node: VyperNode) -> Range:
-        return Range(
-            start=Position(line=node.lineno - 1, character=node.col_offset),
-            end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
-        )
-
     def _find_state_variable_declaration(self, word: str) -> Optional[Range]:
         node = self.ast.find_state_variable_declaration_node_for_name(word)
         if node:
-            return self._create_range_from_node(node)
+            return range_from_node(node)
 
         return None
 
@@ -42,21 +37,21 @@ class ASTNavigator:
     ) -> Optional[Range]:
         decl_node = AST.from_node(node).find_node_declaring_symbol(symbol)
         if decl_node:
-            return self._create_range_from_node(decl_node)
+            return range_from_node(decl_node)
 
         return None
 
     def _find_function_declaration(self, word: str) -> Optional[Range]:
         node = self.ast.find_function_declaration_node_for_name(word)
         if node:
-            return self._create_range_from_node(node)
+            return range_from_node(node)
 
         return None
 
     def find_type_declaration(self, word: str) -> Optional[Range]:
         node = self.ast.find_type_declaration_node_for_name(word)
         if node:
-            return self._create_range_from_node(node)
+            return range_from_node(node)
 
         return None
 
@@ -91,13 +86,13 @@ class ASTNavigator:
         refs = []
 
         # REVIEW: this can help with early returns
-        # ex. 
+        # ex.
         # if word in self.ast.get_enums():
         #    return finalize(self.ast.find_nodes_referencing_enum(word))
         #
         # if word in self.ast.get_structs() or word in self.ast.get_events():
         #   return finalize(self.ast.find_nodes_referencing_struct(word))
-        #def finalize(refs):
+        # def finalize(refs):
         #    return [_range_from_node(ref) for ref in refs]
 
         if word in self.ast.get_enums():
@@ -120,7 +115,7 @@ class ASTNavigator:
             refs = AST.from_node(top_level_node).find_nodes_referencing_symbol(word)
 
         for ref in refs:
-            range_ = self._create_range_from_node(ref)
+            range_ = range_from_node(ref)
             references.append(range_)
 
         return references
@@ -131,7 +126,7 @@ class ASTNavigator:
         if (
             match_
             and match_.group(1) in self.ast.get_enums()
-            and match_.group(2) in self.ast.get_enum_variants(m.group(1))
+            and match_.group(2) in self.ast.get_enum_variants(match_.group(1))
         ):
             return match_
 

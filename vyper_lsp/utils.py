@@ -2,7 +2,10 @@ import logging
 import re
 from pathlib import Path
 from importlib.metadata import version
+from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
+from vyper.ast import VyperNode
+from vyper.exceptions import VyperException
 
 from vyper.compiler import CompilerData
 
@@ -158,3 +161,35 @@ def extract_enum_name(line: str):
     if m:
         return m.group(1)
     return None
+
+
+def range_from_node(node: VyperNode) -> Range:
+    return Range(
+        start=Position(line=node.lineno - 1, character=node.col_offset),
+        end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+    )
+
+
+def range_from_exception(node: VyperException) -> Range:
+    return Range(
+        start=Position(line=node.lineno - 1, character=node.col_offset),
+        end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+    )
+
+
+def diagnostic_from_exception(node: VyperException) -> Diagnostic:
+    return Diagnostic(
+        range=range_from_exception(node),
+        message=str(node),
+        severity=DiagnosticSeverity.Error,
+    )
+
+
+# this looks like duplicated code, could be in utils
+def is_internal_fn(expression: str) -> bool:
+    return expression.startswith("self.") and "(" in expression
+
+
+# this looks like duplicated code, could be in utils
+def is_state_var(expression: str) -> bool:
+    return expression.startswith("self.") and "(" not in expression

@@ -5,6 +5,7 @@ import warnings
 from packaging.version import Version
 from lsprotocol.types import (
     Diagnostic,
+    DiagnosticSeverity,
     ParameterInformation,
     Position,
     Range,
@@ -22,6 +23,9 @@ from vyper_lsp.utils import (
     get_word_at_cursor,
     get_installed_vyper_version,
     get_internal_fn_name_at_cursor,
+    diagnostic_from_exception,
+    is_internal_fn,
+    is_state_var,
 )
 from lsprotocol.types import (
     CompletionItem,
@@ -60,21 +64,6 @@ class AstAnalyzer(Analyzer):
         else:
             self.diagnostics_enabled = True
 
-    # REVIEW: could be standalone (does not need `self`)
-    def _range_from_exception(self, node: VyperException) -> Range:
-        return Range(
-            start=Position(line=node.lineno - 1, character=node.col_offset),
-            end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
-        )
-
-    # REVIEW: could be standalone (does not need `self`)
-    def _diagnostic_from_exception(self, node: VyperException) -> Diagnostic:
-        return Diagnostic(
-            range=self._range_from_exception(node),
-            message=str(node),
-            severity=1,
-        )
-
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
     ) -> SignatureHelp:
@@ -94,10 +83,6 @@ class AstAnalyzer(Analyzer):
             return None
 
         fn_name = node.name
-        # REVIEW: fix arg.annotation.id -- should probably use _format_arg
-        arg_str = ", ".join(
-            [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
-        )
         parameters = []
         line = doc.lines[node.lineno - 1]
         fn_label = line.removeprefix("def ").removesuffix(":\n")
@@ -106,9 +91,7 @@ class AstAnalyzer(Analyzer):
             start_index = fn_label.find(arg.arg)
             end_index = start_index + len(arg.arg)
             parameters.append(
-                ParameterInformation(
-                    label=(start_index, end_index), documentation=None
-                )
+                ParameterInformation(label=(start_index, end_index), documentation=None)
             )
         active_parameter = current_line.split("(")[-1].count(",")
         return SignatureHelp(
@@ -175,20 +158,11 @@ class AstAnalyzer(Analyzer):
 
         return CompletionList(is_incomplete=False, items=[])
 
-
     def get_completions(
         self, ls: LanguageServer, params: CompletionParams
     ) -> CompletionList:
         document = ls.workspace.get_text_document(params.text_document.uri)
         return self.get_completions_in_doc(document, params)
-
-    # this looks like duplicated code, could be in utils
-    def _is_internal_fn(self, expression: str) -> bool:
-        return expression.startswith("self.") and "(" in expression
-
-    # this looks like duplicated code, could be in utils
-    def _is_state_var(self, expression: str) -> bool:
-        return expression.startswith("self.") and "(" not in expression
 
     def _format_arg(self, arg: nodes.arg) -> str:
         if arg.annotation is None:
@@ -238,11 +212,11 @@ class AstAnalyzer(Analyzer):
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
 
-        if self._is_internal_fn(full_word):
+        if is_internal_fn(full_word):
             node = self.ast.find_function_declaration_node_for_name(word)
             return node and self._format_fn_signature(node)
 
-        if self._is_state_var(full_word):
+        if is_state_var(full_word):
             node = self.ast.find_state_variable_declaration_node_for_name(word)
             if not node:
                 return None
@@ -285,10 +259,10 @@ class AstAnalyzer(Analyzer):
                 compiler_data.vyper_module_folded
             except VyperException as e:
                 if e.lineno is not None and e.col_offset is not None:
-                    diagnostics.append(self._diagnostic_from_exception(e))
+                    diagnostics.append(diagnostic_from_exception(e))
                 else:
                     for a in e.annotations:
-                        diagnostics.append(self._diagnostic_from_exception(a))
+                        diagnostics.append(diagnostic_from_exception(a))
             for warning in w:
                 m = deprecation_pattern.match(str(warning.message))
                 if not m:
@@ -315,7 +289,7 @@ class AstAnalyzer(Analyzer):
                                 ),
                             ),
                             message=f"{deprecated} is deprecated. Please use {replacement} instead.",
-                            severity=2,
+                            severity=DiagnosticSeverity.Warning,
                         )
                     )
 
