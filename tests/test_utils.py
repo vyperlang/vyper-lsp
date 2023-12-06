@@ -20,7 +20,7 @@ def test_get_expression_at_cursor():
     assert utils.get_expression_at_cursor(text, 5) == "self.foo"
     assert utils.get_expression_at_cursor(text, 12) == "123"
 
-    text = "foo_bar = self.baz(1,2,3)"
+    text = "foo_bar = self.baz (1,2,3)"
     assert utils.get_expression_at_cursor(text, 0) == "foo_bar"
     assert utils.get_expression_at_cursor(text, 4) == "foo_bar"
-    assert utils.get_expression_at_cursor(text, 11) == "self.baz(1"
+    assert utils.get_expression_at_cursor(text, 21) == "self.baz (1,2,3)"

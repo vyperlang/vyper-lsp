@@ -1,4 +1,5 @@
 import logging
+import string
 import re
 from pathlib import Path
 from importlib.metadata import version
@@ -44,12 +45,9 @@ def is_attribute_access(line):
     return bool(re.match(reg, line.strip()))
 
 
-def is_word_char(char):
+def is_word_char(char: str):
     # true for alnum and underscore
-    # REVIEW: another possibility is `char in <possible char string>`
-    # ex. `char in "_" + string.ascii_letters + string.digits`.
-    # the constants can be factored out for small performance
-    return char.isalnum() or char == "_"
+    return char in string.ascii_letters + string.digits + "_"
 
 
 # REVIEW: these get_.*_at_cursor helpers would benefit from having
@@ -77,46 +75,38 @@ def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
 
 
 def _check_if_cursor_is_within_parenthesis(sentence: str, cursor_index: int) -> bool:
-    start = cursor_index
-    end = cursor_index
+    # Find the nearest '(' before the cursor
+    start = sentence[:cursor_index][::-1].find("(")
+    if start != -1:
+        start = cursor_index - start - 1
 
-    # Find the start of the word
-    # TODO: this is a hacky way to do this, should be refactored
-    # REVIEW: could be reversed(sentence[:start]).find("(")
-    while start > 0 and sentence[start] != "(":
-        start -= 1
+    # Find the nearest ')' after the cursor
+    end = sentence[cursor_index:].find(")")
+    if end != -1:
+        end += cursor_index
 
-    # Find the end of the word
-    # TODO: this is a hacky way to do this, should be refactored
-    # REVIEW: could be sentence[cursor_index:].find(")")
-    while end < len(sentence) and sentence[end] != ")":
-        end += 1
-
-    if start != 0 and start < cursor_index and cursor_index < end:
+    # Check if cursor is within a valid pair of parentheses
+    if start != -1 and end != -1 and start < cursor_index < end:
         return True
 
     return False
 
 
 def _get_entire_function_call(sentence: str, cursor_index: int) -> str:
-    start = cursor_index
-    end = cursor_index
+    # Regex pattern to match function calls
+    # This pattern looks for a word (function name), followed by optional spaces,
+    # and then parentheses with anything inside.
+    pattern = r"\b(?:\w+\.)*\w+\s*\([^)]*\)"
 
-    # Find the start of the word
-    # only skip spaces if we're within the parenthesis
-    # REVIEW: what about `foo (x)`?
-    while start > 0 and sentence[start - 1] != "(":
-        start -= 1
+    # Find all matches in the sentence
+    matches = [match for match in re.finditer(pattern, sentence)]
 
-    while start > 0 and sentence[start - 1] != " ":
-        start -= 1
+    # Find the match that contains the cursor
+    for match in matches:
+        if match.start() <= cursor_index <= match.end():
+            return match.group()
 
-    # Find the end of the word
-    while end < len(sentence) and sentence[end] != ")":
-        end += 1
-
-    fn_call = sentence[start:end]
-    return fn_call
+    return ""  # Return an empty string if no match is found
 
 
 def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
