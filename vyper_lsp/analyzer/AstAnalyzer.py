@@ -245,6 +245,27 @@ class AstAnalyzer(Analyzer):
 
         return None
 
+    def create_diagnostic(
+        self, line_num: int, character_start: int, character_end: int, message: str
+    ) -> Diagnostic:
+        """
+        Helper function to create a diagnostic object.
+
+        :param line_num: The line number of the diagnostic.
+        :param character_start: The starting character position of the diagnostic.
+        :param character_end: The ending character position of the diagnostic.
+        :param message: The diagnostic message.
+        :return: A Diagnostic object.
+        """
+        return Diagnostic(
+            range=Range(
+                start=Position(line=line_num, character=character_start),
+                end=Position(line=line_num, character=character_end),
+            ),
+            message=message,
+            severity=DiagnosticSeverity.Warning,
+        )
+
     def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
         diagnostics = []
 
@@ -271,25 +292,21 @@ class AstAnalyzer(Analyzer):
                 replacement = m.group(2)
                 replacements[deprecated] = replacement
 
-        # iterate over doc.lines and find all deprecated values
-        # and create a warning for each one at the correct position
+        # Iterate over doc.lines and find all deprecated values
         for i, line in enumerate(doc.lines):
-            # REVIEW: maybe make a helper function for the diagnostic construction
             for deprecated, replacement in replacements.items():
-                if deprecated in line:
+                for match in re.finditer(re.escape(deprecated), line):
+                    character_start = match.start()
+                    character_end = match.end()
+                    diagnostic_message = (
+                        f"{deprecated} is deprecated. Please use {replacement} instead."
+                    )
                     diagnostics.append(
-                        Diagnostic(
-                            range=Range(
-                                start=Position(
-                                    line=i, character=line.index(deprecated)
-                                ),
-                                end=Position(
-                                    line=i,
-                                    character=line.index(deprecated) + len(deprecated),
-                                ),
-                            ),
-                            message=f"{deprecated} is deprecated. Please use {replacement} instead.",
-                            severity=DiagnosticSeverity.Warning,
+                        self.create_diagnostic(
+                            line_num=i,
+                            character_start=character_start,
+                            character_end=character_end,
+                            message=diagnostic_message,
                         )
                     )
 
