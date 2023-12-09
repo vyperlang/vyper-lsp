@@ -5,6 +5,7 @@ import warnings
 from packaging.version import Version
 from lsprotocol.types import (
     Diagnostic,
+    DiagnosticSeverity,
     ParameterInformation,
     Position,
     Range,
@@ -22,6 +23,9 @@ from vyper_lsp.utils import (
     get_word_at_cursor,
     get_installed_vyper_version,
     get_internal_fn_name_at_cursor,
+    diagnostic_from_exception,
+    is_internal_fn,
+    is_state_var,
 )
 from lsprotocol.types import (
     CompletionItem,
@@ -31,8 +35,8 @@ from lsprotocol.types import (
 )
 from pygls.server import LanguageServer
 
-pattern = r"(.+) is deprecated\. Please use `(.+)` instead\."
-compiled_pattern = re.compile(pattern)
+pattern_text = r"(.+) is deprecated\. Please use `(.+)` instead\."
+deprecation_pattern = re.compile(pattern_text)
 
 min_vyper_version = Version("0.3.7")
 
@@ -44,7 +48,7 @@ INTEGER_TYPES = UNSIGNED_INTEGER_TYPES | SIGNED_INTEGER_TYPES
 BYTES_M_TYPES = {f"bytes{i}" for i in range(32, 0, -1)}
 DECIMAL_TYPES = {"decimal"}
 
-BASE_TYPES = {"bool", "address"} | INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES
+BASE_TYPES = list({"bool", "address"} | INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES)
 
 DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
 
@@ -60,19 +64,6 @@ class AstAnalyzer(Analyzer):
         else:
             self.diagnostics_enabled = True
 
-    def _range_from_exception(self, node: VyperException) -> Range:
-        return Range(
-            start=Position(line=node.lineno - 1, character=node.col_offset),
-            end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
-        )
-
-    def _diagnostic_from_exception(self, node: VyperException) -> Diagnostic:
-        return Diagnostic(
-            range=self._range_from_exception(node),
-            message=str(node),
-            severity=1,
-        )
-
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
     ) -> SignatureHelp:
@@ -84,38 +75,36 @@ class AstAnalyzer(Analyzer):
             current_line, params.position.character - 1
         )
 
-        if expression.startswith("self."):
-            node = self.ast.find_function_declaration_node_for_name(fn_name)
-            if node:
-                fn_name = node.name
-                arg_str = ", ".join(
-                    [f"{arg.arg}: {arg.annotation.id}" for arg in node.args.args]
+        if not expression.startswith("self."):
+            return None
+
+        node = self.ast.find_function_declaration_node_for_name(fn_name)
+        if not node:
+            return None
+
+        fn_name = node.name
+        parameters = []
+        line = doc.lines[node.lineno - 1]
+        fn_label = line.removeprefix("def ").removesuffix(":\n")
+
+        for arg in node.args.args:
+            start_index = fn_label.find(arg.arg)
+            end_index = start_index + len(arg.arg)
+            parameters.append(
+                ParameterInformation(label=(start_index, end_index), documentation=None)
+            )
+        active_parameter = current_line.split("(")[-1].count(",")
+        return SignatureHelp(
+            signatures=[
+                SignatureInformation(
+                    label=fn_label,
+                    parameters=parameters,
+                    documentation=None,
+                    active_parameter=active_parameter or 0,
                 )
-                fn_label = f"{fn_name}({arg_str})"
-                parameters = []
-                if node.returns:
-                    line = doc.lines[node.lineno - 1]
-                    fn_label = line.removeprefix("def ").removesuffix(":\n")
-                for arg in node.args.args:
-                    start_index = fn_label.find(arg.arg)
-                    end_index = start_index + len(arg.arg)
-                    parameters.append(
-                        ParameterInformation(
-                            label=(start_index, end_index), documentation=None
-                        )
-                    )
-                active_parameter = current_line.split("(")[-1].count(",")
-                return SignatureHelp(
-                    signatures=[
-                        SignatureInformation(
-                            label=fn_label,
-                            parameters=parameters,
-                            documentation=None,
-                            active_parameter=active_parameter or 0,
-                        )
-                    ],
-                    active_signature=0,
-                )
+            ],
+            active_signature=0,
+        )
 
     def get_completions_in_doc(
         self, document: Document, params: CompletionParams
@@ -124,60 +113,56 @@ class AstAnalyzer(Analyzer):
         current_line = document.lines[params.position.line].strip()
         custom_types = self.ast.get_user_defined_types()
 
-        if params.context:
-            if params.context.trigger_character == ".":
-                # get element before the dot
-                element = current_line.split(" ")[-1].split(".")[0]
-
-                # internal functions and state variables
-                if element == "self":
-                    for fn in self.ast.get_internal_functions():
-                        items.append(CompletionItem(label=fn))
-                    # TODO: This should exclude constants and immutables
-                    for var in self.ast.get_state_variables():
-                        items.append(CompletionItem(label=var))
-                else:
-                    # TODO: This is currently only correct for enums
-                    # For structs, we'll need to get the type of the variable
-                    for attr in self.ast.get_attributes_for_symbol(element):
-                        items.append(CompletionItem(label=attr))
-                completions = CompletionList(is_incomplete=False, items=items)
-                return completions
-            elif params.context.trigger_character == "@":
-                for dec in DECORATORS:
-                    items.append(CompletionItem(label=dec))
-                completions = CompletionList(is_incomplete=False, items=items)
-                return completions
-            elif params.context.trigger_character == ":":
-                for typ in custom_types + list(BASE_TYPES):
-                    items.append(CompletionItem(label=typ, insert_text=f" {typ}"))
-
-                completions = CompletionList(is_incomplete=False, items=items)
-                return completions
-            else:
-                if params.context.trigger_character == " ":
-                    if current_line[-1] == ":":
-                        for typ in custom_types + list(BASE_TYPES):
-                            items.append(CompletionItem(label=typ))
-
-                        completions = CompletionList(is_incomplete=False, items=items)
-                        return completions
-                return CompletionList(is_incomplete=False, items=[])
-
-        else:
+        if not params.context:
             return CompletionList(is_incomplete=False, items=[])
+
+        if params.context.trigger_character == ".":
+            # get element before the dot
+            element = current_line.split(" ")[-1].split(".")[0]
+
+            # internal functions and state variables
+            if element == "self":
+                for fn in self.ast.get_internal_functions():
+                    items.append(CompletionItem(label=fn))
+                # TODO: This should exclude constants and immutables
+                for var in self.ast.get_state_variables():
+                    items.append(CompletionItem(label=var))
+            else:
+                # TODO: This is currently only correct for enums
+                # For structs, we'll need to get the type of the variable
+                for attr in self.ast.get_attributes_for_symbol(element):
+                    items.append(CompletionItem(label=attr))
+            completions = CompletionList(is_incomplete=False, items=items)
+            return completions
+
+        if params.context.trigger_character == "@":
+            for dec in DECORATORS:
+                items.append(CompletionItem(label=dec))
+            completions = CompletionList(is_incomplete=False, items=items)
+            return completions
+
+        if params.context.trigger_character == ":":
+            for typ in custom_types + BASE_TYPES:
+                items.append(CompletionItem(label=typ, insert_text=f" {typ}"))
+
+            completions = CompletionList(is_incomplete=False, items=items)
+            return completions
+
+        if params.context.trigger_character == " ":
+            if current_line[-1] == ":":
+                for typ in custom_types + BASE_TYPES:
+                    items.append(CompletionItem(label=typ))
+
+                completions = CompletionList(is_incomplete=False, items=items)
+                return completions
+
+        return CompletionList(is_incomplete=False, items=[])
 
     def get_completions(
         self, ls: LanguageServer, params: CompletionParams
     ) -> CompletionList:
         document = ls.workspace.get_text_document(params.text_document.uri)
         return self.get_completions_in_doc(document, params)
-
-    def _is_internal_fn(self, expression: str) -> bool:
-        return expression.startswith("self.") and "(" in expression
-
-    def _is_state_var(self, expression: str) -> bool:
-        return expression.startswith("self.") and "(" not in expression
 
     def _format_arg(self, arg: nodes.arg) -> str:
         if arg.annotation is None:
@@ -203,55 +188,73 @@ class AstAnalyzer(Analyzer):
         return f"{arg.arg}: {arg.annotation.id}"
 
     def _format_fn_signature(self, node: nodes.FunctionDef) -> str:
-        fn_name = node.name
-        arg_str = ", ".join([self._format_arg(arg) for arg in node.args.args])
-        if node.returns:
-            if isinstance(node.returns, nodes.Subscript):
-                return_type_str = (
-                    f"{node.returns.value.id}[{node.returns.slice.value.value}]"
-                )
-            else:
-                return_type_str = node.returns.id
-            return (
-                f"(Internal Function) **{fn_name}**({arg_str}) -> **{return_type_str}**"
-            )
-        return f"(Internal Function) **{fn_name}**({arg_str})"
+        pattern = r"def\s+(\w+)\((?:[^()]|\n)*\)(?:\s*->\s*[\w\[\], \n]+)?:"
+        match = re.search(pattern, node.node_source_code, re.MULTILINE)
+        if match:
+            function_def = match.group()
+            return f"(Internal Function) {function_def}"
 
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
         if len(document.lines) < pos.line:
             return None
+
         og_line = document.lines[pos.line]
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
 
-        if self._is_internal_fn(full_word):
+        if is_internal_fn(full_word):
             node = self.ast.find_function_declaration_node_for_name(word)
-            if node:
-                return self._format_fn_signature(node)
-        elif self._is_state_var(full_word):
+            return node and self._format_fn_signature(node)
+
+        if is_state_var(full_word):
             node = self.ast.find_state_variable_declaration_node_for_name(word)
-            if node:
-                variable_type = node.annotation.id
-                return f"(State Variable) **{word}** : **{variable_type}**"
-        elif word in self.ast.get_structs():
+            if not node:
+                return None
+            variable_type = node.annotation.id
+            return f"(State Variable) **{word}** : **{variable_type}**"
+
+        if word in self.ast.get_structs():
             node = self.ast.find_type_declaration_node_for_name(word)
-            if node:
-                return f"(Struct) **{word}**"
-        elif word in self.ast.get_enums():
+            return node and f"(Struct) **{word}**"
+
+        if word in self.ast.get_enums():
             node = self.ast.find_type_declaration_node_for_name(word)
-            if node:
-                return f"(Enum) **{word}**"
-        elif word in self.ast.get_events():
+            return node and f"(Enum) **{word}**"
+
+        if word in self.ast.get_events():
             node = self.ast.find_type_declaration_node_for_name(word)
-            if node:
-                return f"(Event) **{word}**"
-        elif word in self.ast.get_constants():
+            return node and f"(Event) **{word}**"
+
+        if word in self.ast.get_constants():
             node = self.ast.find_state_variable_declaration_node_for_name(word)
-            if node:
-                variable_type = node.annotation.id
-                return f"(Constant) **{word}** : **{variable_type}**"
-        else:
-            return None
+            if not node:
+                return None
+
+            variable_type = node.annotation.id
+            return f"(Constant) **{word}** : **{variable_type}**"
+
+        return None
+
+    def create_diagnostic(
+        self, line_num: int, character_start: int, character_end: int, message: str
+    ) -> Diagnostic:
+        """
+        Helper function to create a diagnostic object.
+
+        :param line_num: The line number of the diagnostic.
+        :param character_start: The starting character position of the diagnostic.
+        :param character_end: The ending character position of the diagnostic.
+        :param message: The diagnostic message.
+        :return: A Diagnostic object.
+        """
+        return Diagnostic(
+            range=Range(
+                start=Position(line=line_num, character=character_start),
+                end=Position(line=line_num, character=character_end),
+            ),
+            message=message,
+            severity=DiagnosticSeverity.Warning,
+        )
 
     def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
         diagnostics = []
@@ -267,36 +270,33 @@ class AstAnalyzer(Analyzer):
                 compiler_data.vyper_module_folded
             except VyperException as e:
                 if e.lineno is not None and e.col_offset is not None:
-                    diagnostics.append(self._diagnostic_from_exception(e))
+                    diagnostics.append(diagnostic_from_exception(e))
                 else:
                     for a in e.annotations:
-                        diagnostics.append(self._diagnostic_from_exception(a))
+                        diagnostics.append(diagnostic_from_exception(a))
             for warning in w:
-                match = compiled_pattern.match(str(warning.message))
-                if not match:
+                m = deprecation_pattern.match(str(warning.message))
+                if not m:
                     continue
-                deprecated = match.group(1)
-                replacement = match.group(2)
+                deprecated = m.group(1)
+                replacement = m.group(2)
                 replacements[deprecated] = replacement
 
-        # iterate over doc.lines and find all deprecated values
-        # and create a warning for each one at the correct position
+        # Iterate over doc.lines and find all deprecated values
         for i, line in enumerate(doc.lines):
             for deprecated, replacement in replacements.items():
-                if deprecated in line:
+                for match in re.finditer(re.escape(deprecated), line):
+                    character_start = match.start()
+                    character_end = match.end()
+                    diagnostic_message = (
+                        f"{deprecated} is deprecated. Please use {replacement} instead."
+                    )
                     diagnostics.append(
-                        Diagnostic(
-                            range=Range(
-                                start=Position(
-                                    line=i, character=line.index(deprecated)
-                                ),
-                                end=Position(
-                                    line=i,
-                                    character=line.index(deprecated) + len(deprecated),
-                                ),
-                            ),
-                            message=f"{deprecated} is deprecated. Please use {replacement} instead.",
-                            severity=2,
+                        self.create_diagnostic(
+                            line_num=i,
+                            character_start=character_start,
+                            character_end=character_end,
+                            message=diagnostic_message,
                         )
                     )
 

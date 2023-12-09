@@ -34,6 +34,13 @@ pytest = "^7.4.3"
 [tool.poetry.scripts]
 vyper-lsp = 'vyper_lsp.main:main'
 
+[tool.coverage.run]
+source = ["vyper_lsp"]
+omit = ["vyper_lsp/analyzer/SourceAnalyzer.py",
+        "vyper_lsp/__init__.py",
+        "vyper_lsp/__main__.py",
+        ]
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

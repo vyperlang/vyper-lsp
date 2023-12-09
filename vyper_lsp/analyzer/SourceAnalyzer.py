@@ -1,3 +1,5 @@
+# REVIEW: not currently used
+
 import re
 from typing import List, Optional
 from lark import UnexpectedInput, UnexpectedToken
@@ -31,8 +33,8 @@ def format_parse_error(e):
     if isinstance(e, UnexpectedToken):
         expected = ", ".join(e.accepts or e.expected)
         return f"Unexpected token '{e.token}' at {e.line}:{e.column}. Expected one of: {expected}"
-    else:
-        return str(e)
+
+    return str(e)
 
 
 LEGACY_VERSION_PRAGMA_REGEX = re.compile(r"^#\s*@version\s+(.*)$")
@@ -40,12 +42,11 @@ VERSION_PRAGMA_REGEX = re.compile(r"^#pragma\s+version\s+(.*)$")
 
 
 def extract_version_pragma(line: str) -> Optional[str]:
-    if match := LEGACY_VERSION_PRAGMA_REGEX.match(line):
-        return match.group(1)
-    elif match := VERSION_PRAGMA_REGEX.match(line):
-        return match.group(1)
-    else:
-        return None
+    if (m := LEGACY_VERSION_PRAGMA_REGEX.match(line)) is not None:
+        return m.group(1)
+    elif (m := VERSION_PRAGMA_REGEX.match(line)) is not None:
+        return m.group(1)
+    return None
 
 
 # regex that matches numbers and underscores
@@ -61,7 +62,7 @@ class SourceAnalyzer(Analyzer):
     def get_version_pragma(self, doc: Document) -> Optional[str]:
         doc_lines = doc.lines
         for line in doc_lines:
-            if version := extract_version_pragma(line):
+            if (version := extract_version_pragma(line)) is not None:
                 return version
 
     def hover_info(self, doc: Document, pos: Position) -> Optional[str]:
@@ -72,6 +73,7 @@ class SourceAnalyzer(Analyzer):
         last_error = None
 
         def on_grammar_error(e: UnexpectedInput) -> bool:
+            # REVIEW: nonlocal!!!
             nonlocal last_error
             if (
                 last_error is not None

@@ -1,8 +1,13 @@
 import logging
+import string
 import re
 from pathlib import Path
 from importlib.metadata import version
+from typing import Optional
+from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
+from vyper.ast import VyperNode
+from vyper.exceptions import VyperException
 
 from vyper.compiler import CompilerData
 
@@ -41,21 +46,25 @@ def is_attribute_access(line):
     return bool(re.match(reg, line.strip()))
 
 
-def is_word_char(char):
-    # true for alnum and underscore
-    return char.isalnum() or char == "_"
+_WORD_CHARS = string.ascii_letters + string.digits + "_"
+
+
+# REVIEW: these get_.*_at_cursor helpers would benefit from having
+# access to as much cursor information as possible (ex. line number),
+# it could open up some possibilies when refactoring for performance
 
 
 def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
     start = cursor_index
     end = cursor_index
 
+    # TODO: this could be a perf hotspot
     # Find the start of the word
-    while start > 0 and is_word_char(sentence[start - 1]):
+    while start > 0 and sentence[start - 1] in _WORD_CHARS:
         start -= 1
 
     # Find the end of the word
-    while end < len(sentence) and is_word_char(sentence[end]):
+    while end < len(sentence) and sentence[end] in _WORD_CHARS:
         end += 1
 
     # Extract the word
@@ -65,42 +74,38 @@ def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
 
 
 def _check_if_cursor_is_within_parenthesis(sentence: str, cursor_index: int) -> bool:
-    start = cursor_index
-    end = cursor_index
+    # Find the nearest '(' before the cursor
+    start = sentence[:cursor_index][::-1].find("(")
+    if start != -1:
+        start = cursor_index - start - 1
 
-    # Find the start of the word
-    # TODO: this is a hacky way to do this, should be refactored
-    while start > 0 and sentence[start] != "(":
-        start -= 1
+    # Find the nearest ')' after the cursor
+    end = sentence[cursor_index:].find(")")
+    if end != -1:
+        end += cursor_index
 
-    # Find the end of the word
-    # TODO: this is a hacky way to do this, should be refactored
-    while end < len(sentence) and sentence[end] != ")":
-        end += 1
-
-    if start != 0 and start < cursor_index and cursor_index < end:
+    # Check if cursor is within a valid pair of parentheses
+    if start != -1 and end != -1 and start < cursor_index < end:
         return True
+
     return False
 
 
 def _get_entire_function_call(sentence: str, cursor_index: int) -> str:
-    start = cursor_index
-    end = cursor_index
+    # Regex pattern to match function calls
+    # This pattern looks for a word (function name), followed by optional spaces,
+    # and then parentheses with anything inside.
+    pattern = r"\b(?:\w+\.)*\w+\s*\([^)]*\)"
 
-    # Find the start of the word
-    # only skip spaces if we're within the parenthesis
-    while start > 0 and sentence[start - 1] != "(":
-        start -= 1
+    # Find all matches in the sentence
+    matches = [match for match in re.finditer(pattern, sentence)]
 
-    while start > 0 and sentence[start - 1] != " ":
-        start -= 1
+    # Find the match that contains the cursor
+    for match in matches:
+        if match.start() <= cursor_index <= match.end():
+            return match.group()
 
-    # Find the end of the word
-    while end < len(sentence) and sentence[end] != ")":
-        end += 1
-
-    fn_call = sentence[start:end]
-    return fn_call
+    return ""  # Return an empty string if no match is found
 
 
 def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
@@ -112,17 +117,11 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     end = cursor_index
 
     # Find the start of the word
-    while (
-        start > 0
-        and is_word_char(sentence[start - 1])
-        or sentence[start - 1] in ".[]()"
-    ):
+    while start > 0 and sentence[start - 1] in _WORD_CHARS + ".[]()":
         start -= 1
 
     # Find the end of the word
-    while (
-        end < len(sentence) and is_word_char(sentence[end]) or sentence[end] in ".[]()"
-    ):
+    while end < len(sentence) and sentence[end] in _WORD_CHARS + ".[]()":
         end += 1
 
     # Extract the word
@@ -131,15 +130,76 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     return word
 
 
-def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> str:
-    # TODO: dont assume the fn call is at the end of the line
-    word = sentence.split("(")[0].split(" ")[-1].strip().split("self.")[-1]
+def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> Optional[str]:
+    # TODO: Improve this function to handle more cases
+    # should be simpler, and handle when the cursor is on "self." before a fn name
+    # Split the sentence into segments at each 'self.'
+    segments = sentence.split("self.")
 
-    return word
+    # Accumulated length to keep track of the cursor's position relative to the original sentence
+    accumulated_length = 0
+
+    for segment in segments:
+        if not segment:
+            accumulated_length += len("self.")
+            continue
+
+        # Update the accumulated length for each segment
+        segment_start = accumulated_length
+        segment_end = accumulated_length + len(segment)
+        accumulated_length = segment_end + 5  # Update for next segment
+
+        # Check if the cursor is within the current segment
+        if segment_start <= cursor_index <= segment_end:
+            # Extract the function name from the segment
+            function_name = re.findall(r"\b\w+\s*\(", segment)
+            if function_name:
+                # Take the function name closest to the cursor
+                closest_fn = min(
+                    function_name,
+                    key=lambda fn: abs(
+                        cursor_index - (segment_start + segment.find(fn))
+                    ),
+                )
+                return closest_fn.split("(")[0].strip()
+
+    return None
 
 
 def extract_enum_name(line: str):
-    match = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
-    if match:
-        return match.group(1)
+    m = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
+    if m:
+        return m.group(1)
     return None
+
+
+def range_from_node(node: VyperNode) -> Range:
+    return Range(
+        start=Position(line=node.lineno - 1, character=node.col_offset),
+        end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+    )
+
+
+def range_from_exception(node: VyperException) -> Range:
+    return Range(
+        start=Position(line=node.lineno - 1, character=node.col_offset),
+        end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
+    )
+
+
+def diagnostic_from_exception(node: VyperException) -> Diagnostic:
+    return Diagnostic(
+        range=range_from_exception(node),
+        message=str(node),
+        severity=DiagnosticSeverity.Error,
+    )
+
+
+# this looks like duplicated code, could be in utils
+def is_internal_fn(expression: str) -> bool:
+    return expression.startswith("self.") and "(" in expression
+
+
+# this looks like duplicated code, could be in utils
+def is_state_var(expression: str) -> bool:
+    return expression.startswith("self.") and "(" not in expression

@@ -34,17 +34,16 @@ class AST:
             self.ast_data = copy.deepcopy(compiler_data.vyper_module)
         except Exception as e:
             logger.error(f"Error generating AST, {e}")
-            pass
+
         try:
             self.ast_data_unfolded = compiler_data.vyper_module_unfolded
         except Exception as e:
             logger.error(f"Error generating unfolded AST, {e}")
-            pass
+
         try:
             self.ast_data_folded = compiler_data.vyper_module_folded
         except Exception as e:
             logger.error(f"Error generating folded AST, {e}")
-            pass
 
     @property
     def best_ast(self):
@@ -54,8 +53,8 @@ class AST:
             return self.ast_data
         elif self.ast_data_folded:
             return self.ast_data_folded
-        else:
-            return None
+
+        return None
 
     def get_descendants(self, *args, **kwargs):
         if self.best_ast is None:
@@ -110,6 +109,7 @@ class AST:
         # missing from self.ast_data_unfolded and self.ast_data_folded when constants
         if self.ast_data is None:
             return []
+
         return [
             node.target.id for node in self.ast_data.get_descendants(nodes.VariableDecl)
         ]
@@ -155,8 +155,8 @@ class AST:
             return self.get_struct_fields(symbol)
         elif isinstance(node, nodes.EnumDef):
             return self.get_enum_variants(symbol)
-        else:
-            return []
+
+        return []
 
     def find_function_declaration_node_for_name(self, function: str):
         for node in self.get_descendants(nodes.FunctionDef):
@@ -231,6 +231,8 @@ class AST:
             if node.lineno <= pos.line and pos.line <= node.end_lineno:
                 return node
 
+        return None
+
     def find_nodes_referencing_symbol(self, symbol: str):
         # this only runs on subtrees
         return_nodes = []
@@ -256,3 +258,5 @@ class AST:
         for node in self.get_descendants((nodes.AnnAssign, nodes.VariableDecl)):
             if node.target.id == symbol:
                 return node
+
+        return None
