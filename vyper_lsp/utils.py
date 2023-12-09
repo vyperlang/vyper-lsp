@@ -139,7 +139,7 @@ def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> Optional
 
     for segment in segments:
         if not segment:
-            accumulated_length += 5  # Length of 'self.'
+            accumulated_length += len("self.")
             continue
 
         # Update the accumulated length for each segment
