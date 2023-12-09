@@ -131,6 +131,8 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
 
 
 def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> Optional[str]:
+    # TODO: Improve this function to handle more cases
+    # should be simpler, and handle when the cursor is on "self." before a fn name
     # Split the sentence into segments at each 'self.'
     segments = sentence.split("self.")
 
