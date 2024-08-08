@@ -1,4 +1,4 @@
-#pragma version 0.3.10
+#pragma version ^0.4.0
 
 event Foo:
     arg1: uint256
@@ -16,7 +16,7 @@ n: Roles
 
 FEE: constant(uint256) = 100
 
-@external
+@deploy
 def __init__():
     y: uint256 = 100_000_100
     x: uint256 = FEE
