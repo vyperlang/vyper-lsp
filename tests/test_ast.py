@@ -8,7 +8,7 @@ x: constant(uint256) = 123
 y: uint256
 z: constant(bool) = True
 
-@external
+@deploy
 def __init__():
     self.y = x
         """
@@ -16,9 +16,9 @@ def __init__():
     assert ast.get_constants() == ["x", "z"]
 
 
-def test_get_enums(ast):
+def test_get_flags(ast):
     src = """
-enum Foo:
+flag Foo:
     Bar
     Baz
     """
@@ -26,9 +26,9 @@ enum Foo:
     assert ast.get_enums() == ["Foo"]
 
 
-def test_get_enum_variants(ast):
+def test_get_flag_variants(ast):
     src = """
-enum Foo:
+flag Foo:
     Bar
     Baz
     """
@@ -79,12 +79,12 @@ event FooEvent:
     arg1: indexed(uint256)
     arg2: indexed(address)
 
-enum FooEnum:
+flag FooFlag:
     Bar
     Baz
     """
     ast.build_ast(src)
-    assert ast.get_user_defined_types() == ["Foo", "FooEnum"]
+    assert ast.get_user_defined_types() == ["Foo", "FooFlag"]
 
 
 def test_get_state_variables(ast):
@@ -199,9 +199,9 @@ def foo():
     )  # line number of self.y = x, counting first newline
 
 
-def test_find_nodes_referencing_enum(ast):
+def test_find_nodes_referencing_flag(ast):
     src = """
-enum Foo:
+flag Foo:
     Bar
     Baz
 
@@ -221,9 +221,9 @@ def bar() -> Foo:
     assert references[3].lineno == 9  # line number of self.Baz, counting first newline
 
 
-def test_find_nodes_referencing_enum_variant(ast):
+def test_find_nodes_referencing_flag_variant(ast):
     src = """
-enum Foo:
+flag Foo:
     Bar
     Baz
 
@@ -250,11 +250,11 @@ struct Foo:
 
 @external
 def foo():
-    x: Foo = Foo({bar: 123, baz: msg.sender})
+    x: Foo = Foo(bar=123, baz=msg.sender)
 
 @external
 def bar() -> Foo:
-    return Foo({bar: 123, baz: msg.sender})
+    return Foo(bar=123, baz=msg.sender)
         """
     ast.build_ast(src)
     references = ast.find_nodes_referencing_struct("Foo")
@@ -292,12 +292,12 @@ struct Foo:
     bar: uint256
     baz: address
 
-enum Bar:
+flag Bar:
     Baz
 
 @external
 def foo():
-    x: Foo = Foo({bar: 123, baz: msg.sender})
+    x: Foo = Foo(bar=123, baz=msg.sender)
         """
     ast.build_ast(src)
     assert ast.get_attributes_for_symbol("Foo") == ["bar", "baz"]
@@ -355,12 +355,12 @@ struct Foo:
     bar: uint256
     baz: address
 
-enum Bar:
+flag Bar:
     Baz
 
 @external
 def foo():
-    x: Foo = Foo({bar: 123, baz: msg.sender})
+    x: Foo = Foo(bar=123, baz=msg.sender)
         """
     ast.build_ast(src)
     assert (
@@ -368,7 +368,7 @@ def foo():
     )  # line number of struct Foo, counting first newline
     assert (
         ast.find_type_declaration_node_for_name("Bar").lineno == 6
-    )  # line number of enum Bar, counting first newline
+    )  # line number of flag Bar, counting first newline
     assert (
         ast.find_type_declaration_node_for_name("Baz").lineno == 7
     )  # line number of Baz, counting first newline
@@ -381,7 +381,7 @@ x: uint256
 y: address
 z: bool
 
-enum Foo:
+flag Foo:
     Bar
     Baz
 
@@ -400,7 +400,7 @@ def foo():
     pos: Position = Position(line=8, character=0)
     assert (
         ast.find_top_level_node_at_pos(pos).lineno == 6
-    )  # line number of enum Foo, counting first newline
+    )  # line number of flag Foo, counting first newline
 
 
 def test_find_node_declaring_symbol(ast):

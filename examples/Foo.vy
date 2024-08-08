@@ -7,7 +7,7 @@ event Foo:
 struct Bar:
     x: uint256
 
-enum Roles:
+flag Roles:
     ADMIN
     USER
 
@@ -20,7 +20,7 @@ FEE: constant(uint256) = 100
 def __init__():
     y: uint256 = 100_000_100
     x: uint256 = FEE
-    z: Bar = Bar({x: y})
+    z: Bar = Bar(x=y)
     m: Roles = Roles.ADMIN
     log Foo(1, msg.sender)
     n: Roles = Roles.USER

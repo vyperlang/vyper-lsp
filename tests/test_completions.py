@@ -43,7 +43,7 @@ def baz():
 
 def test_completions_enum_variant(ast):
     src = """
-enum Foo:
+flag Foo:
     BAR
     BAZ
 
