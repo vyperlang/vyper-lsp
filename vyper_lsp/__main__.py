@@ -11,13 +11,13 @@ def main():
         "--tcp",
         nargs=2,
         metavar=("HOST", "PORT"),
-        help="Use TCP protocol with specified host and port",
+        help="Use TCP with specified host and port",
     )
 
     args = parser.parse_args()
 
     if args.tcp:
-        print("Starting server with TCP protocol")
+        print("Starting server with TCP")
         host, port = args.tcp
         server.start_tcp(host=host, port=int(port))
     else:
