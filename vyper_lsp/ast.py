@@ -13,7 +13,7 @@ class AST:
     ast_data_folded = None
     ast_data_unfolded = None
 
-    custom_type_node_types = (nodes.StructDef, nodes.EnumDef)
+    custom_type_node_types = (nodes.StructDef, nodes.FlagDef)
 
     @classmethod
     def from_node(cls, node: VyperNode):
@@ -67,7 +67,7 @@ class AST:
         return self.best_ast.get_children(*args, **kwargs)
 
     def get_enums(self) -> List[str]:
-        return [node.name for node in self.get_descendants(nodes.EnumDef)]
+        return [node.name for node in self.get_descendants(nodes.FlagDef)]
 
     def get_structs(self) -> List[str]:
         return [node.name for node in self.get_descendants(nodes.StructDef)]
@@ -153,7 +153,7 @@ class AST:
 
         if isinstance(node, nodes.StructDef):
             return self.get_struct_fields(symbol)
-        elif isinstance(node, nodes.EnumDef):
+        elif isinstance(node, nodes.FlagDef):
             return self.get_enum_variants(symbol)
 
         return []
@@ -186,7 +186,7 @@ class AST:
         for node in self.get_descendants(searchable_types):
             if node.name == symbol:
                 return node
-            if isinstance(node, nodes.EnumDef):
+            if isinstance(node, nodes.FlagDef):
                 for variant in node.get_children(nodes.Expr):
                     if variant.value.id == symbol:
                         return variant

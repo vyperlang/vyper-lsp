@@ -4,7 +4,7 @@ from lsprotocol.types import Position, Range
 from typing import List, Optional
 
 from pygls.workspace import Document
-from vyper.ast import EnumDef, FunctionDef, VyperNode
+from vyper.ast import FlagDef, FunctionDef, VyperNode
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
     get_expression_at_cursor,
@@ -98,7 +98,7 @@ class ASTNavigator:
         if self._is_state_var_decl(og_line, word):
             return finalize(self.ast.find_nodes_referencing_state_variable(word))
 
-        if isinstance(top_level_node, EnumDef):
+        if isinstance(top_level_node, FlagDef):
             return finalize(
                 self.ast.find_nodes_referencing_enum_variant(top_level_node.name, word)
             )
