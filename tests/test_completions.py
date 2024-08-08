@@ -104,7 +104,7 @@ def bar():
 
     analyzer = AstAnalyzer(ast)
     completions = analyzer.get_completions_in_doc(doc, params)
-    assert len(completions.items) == 6
+    assert len(completions.items) == 7
     labels = [c.label for c in completions.items]
     assert "internal" in labels
     assert "external" in labels
@@ -112,3 +112,4 @@ def bar():
     assert "nonpayable" in labels
     assert "view" in labels
     assert "pure" in labels
+    assert "deploy" in labels

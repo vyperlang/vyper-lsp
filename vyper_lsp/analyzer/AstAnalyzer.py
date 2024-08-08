@@ -50,7 +50,7 @@ DECIMAL_TYPES = {"decimal"}
 
 BASE_TYPES = list({"bool", "address"} | INTEGER_TYPES | BYTES_M_TYPES | DECIMAL_TYPES)
 
-DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal"]
+DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal", "deploy"]
 
 logger = logging.getLogger("vyper-lsp")
 
