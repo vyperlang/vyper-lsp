@@ -71,10 +71,13 @@ class AstAnalyzer(Analyzer):
         expression = get_expression_at_cursor(
             current_line, params.position.character - 1
         )
+        # TODO: Implement checking external functions, module functions, and interfaces
         fn_name = get_internal_fn_name_at_cursor(
             current_line, params.position.character - 1
         )
 
+        # this returns for all external functions
+        # TODO: Implement checking interfaces
         if not expression.startswith("self."):
             return None
 
@@ -85,6 +88,15 @@ class AstAnalyzer(Analyzer):
         fn_name = node.name
         parameters = []
         line = doc.lines[node.lineno - 1]
+
+        decl_str = f"def {fn_name}("
+        search_start_line_no = 0
+
+        while not line.startswith(decl_str):
+            line = doc.lines[search_start_line_no]
+            search_start_line_no += 1
+
+
         fn_label = line.removeprefix("def ").removesuffix(":\n")
 
         for arg in node.args.args:
