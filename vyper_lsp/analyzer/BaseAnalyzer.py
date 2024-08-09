@@ -11,10 +11,6 @@ class Analyzer(ABC):
         pass
 
     @abstractmethod
-    def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
-        pass
-
-    @abstractmethod
     def get_completions(
         self, ls: LanguageServer, params: CompletionParams
     ) -> CompletionList:
