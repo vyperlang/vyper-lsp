@@ -181,16 +181,21 @@ def range_from_node(node: VyperNode) -> Range:
 
 
 def range_from_exception(node: VyperException) -> Range:
+    if getattr(node, "end_lineno", None) is None:
+        return Range(
+            start=Position(line=node.lineno - 1, character=node.col_offset),
+            end=Position(line=node.lineno - 1, character=node.col_offset),
+        )
     return Range(
         start=Position(line=node.lineno - 1, character=node.col_offset),
         end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
     )
 
 
-def diagnostic_from_exception(node: VyperException) -> Diagnostic:
+def diagnostic_from_exception(node: VyperException, message=None) -> Diagnostic:
     return Diagnostic(
         range=range_from_exception(node),
-        message=str(node),
+        message=message or str(node),
         severity=DiagnosticSeverity.Error,
     )
 

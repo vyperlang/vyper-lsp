@@ -285,7 +285,7 @@ class AstAnalyzer(Analyzer):
                     diagnostics.append(diagnostic_from_exception(e))
                 else:
                     for a in e.annotations:
-                        diagnostics.append(diagnostic_from_exception(a))
+                        diagnostics.append(diagnostic_from_exception(a, message=e.message))
             for warning in w:
                 m = deprecation_pattern.match(str(warning.message))
                 if not m:
