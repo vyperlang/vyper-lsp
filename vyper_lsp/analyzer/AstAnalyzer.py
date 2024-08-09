@@ -281,11 +281,13 @@ class AstAnalyzer(Analyzer):
                 compiler_data = CompilerData(doc.source)
                 compiler_data.annotated_vyper_module
             except VyperException as e:
+                # make message string include class name
+                message = f"{e.__class__.__name__}: {e}"
                 if e.lineno is not None and e.col_offset is not None:
                     diagnostics.append(diagnostic_from_exception(e))
                 else:
                     for a in e.annotations:
-                        diagnostics.append(diagnostic_from_exception(a, message=e.message))
+                        diagnostics.append(diagnostic_from_exception(a, message=message))
             for warning in w:
                 m = deprecation_pattern.match(str(warning.message))
                 if not m:
