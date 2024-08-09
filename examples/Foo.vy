@@ -61,4 +61,4 @@ def owner() -> address:
 N_COINS: constant(uint256) = 2
 A_MULTIPLIER: constant(uint256) = 10000
 
-MIN_A: constant(uint256) = N_COINS**N_COINS * A_MULTIPLIER / 10
+MIN_A: constant(uint256) = N_COINS**N_COINS * A_MULTIPLIER // 10

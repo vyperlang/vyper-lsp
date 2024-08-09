@@ -11,7 +11,7 @@ logger = logging.getLogger("vyper-lsp")
 class AST:
     ast_data = None
     ast_data_folded = None
-    ast_data_unfolded = None
+    ast_data_annotated = None
 
     custom_type_node_types = (nodes.StructDef, nodes.FlagDef)
 
@@ -19,7 +19,7 @@ class AST:
     def from_node(cls, node: VyperNode):
         ast = cls()
         ast.ast_data = node
-        ast.ast_data_unfolded = node
+        ast.ast_data_annotated = node
         ast.ast_data_folded = node
         return ast
 
@@ -36,19 +36,14 @@ class AST:
             logger.error(f"Error generating AST, {e}")
 
         try:
-            self.ast_data_unfolded = compiler_data.vyper_module_unfolded
+            self.ast_data_annotated = compiler_data.annotated_vyper_module
         except Exception as e:
-            logger.error(f"Error generating unfolded AST, {e}")
-
-        try:
-            self.ast_data_folded = compiler_data.vyper_module_folded
-        except Exception as e:
-            logger.error(f"Error generating folded AST, {e}")
+            logger.error(f"Error generating annotated AST, {e}")
 
     @property
     def best_ast(self):
-        if self.ast_data_unfolded:
-            return self.ast_data_unfolded
+        if self.ast_data_annotated:
+            return self.ast_data_annotated
         elif self.ast_data:
             return self.ast_data
         elif self.ast_data_folded:
