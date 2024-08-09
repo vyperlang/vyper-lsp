@@ -1,8 +1,6 @@
 import logging
-from pathlib import Path
 import re
-from typing import List, Optional
-import warnings
+from typing import Optional
 from packaging.version import Version
 from lsprotocol.types import (
     Diagnostic,
@@ -14,9 +12,6 @@ from lsprotocol.types import (
     SignatureInformation,
 )
 from pygls.workspace import Document
-from vyper.compiler import CompilerData
-from vyper.compiler.input_bundle import FilesystemInputBundle
-from vyper.exceptions import VyperException
 from vyper.ast import nodes
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
@@ -25,7 +20,6 @@ from vyper_lsp.utils import (
     get_word_at_cursor,
     get_installed_vyper_version,
     get_internal_fn_name_at_cursor,
-    diagnostic_from_exception,
     is_internal_fn,
     is_state_var,
 )
@@ -269,56 +263,3 @@ class AstAnalyzer(Analyzer):
             message=message,
             severity=DiagnosticSeverity.Warning,
         )
-
-    def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
-        diagnostics = []
-
-        if not self.diagnostics_enabled:
-            return diagnostics
-
-        replacements = {}
-        warnings.simplefilter("always")
-        with warnings.catch_warnings(record=True) as w:
-            try:
-                uri = doc.uri
-                # uri withouth file://
-                uri_processed = uri.replace("file://", "")
-                uri_path = Path(uri_processed)
-                uri_parent_path = uri_path.parent
-                compiler_data = CompilerData(doc.source, input_bundle=FilesystemInputBundle([uri_parent_path]))
-                compiler_data.annotated_vyper_module
-            except VyperException as e:
-                # make message string include class name
-                message = f"{e.__class__.__name__}: {e}"
-                if e.lineno is not None and e.col_offset is not None:
-                    diagnostics.append(diagnostic_from_exception(e))
-                else:
-                    for a in e.annotations:
-                        diagnostics.append(diagnostic_from_exception(a, message=message))
-            for warning in w:
-                m = deprecation_pattern.match(str(warning.message))
-                if not m:
-                    continue
-                deprecated = m.group(1)
-                replacement = m.group(2)
-                replacements[deprecated] = replacement
-
-        # Iterate over doc.lines and find all deprecated values
-        for i, line in enumerate(doc.lines):
-            for deprecated, replacement in replacements.items():
-                for match in re.finditer(re.escape(deprecated), line):
-                    character_start = match.start()
-                    character_end = match.end()
-                    diagnostic_message = (
-                        f"{deprecated} is deprecated. Please use {replacement} instead."
-                    )
-                    diagnostics.append(
-                        self.create_diagnostic(
-                            line_num=i,
-                            character_start=character_start,
-                            character_end=character_end,
-                            message=diagnostic_message,
-                        )
-                    )
-
-        return diagnostics

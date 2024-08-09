@@ -76,9 +76,8 @@ def validate_doc(
     | DidSaveTextDocumentParams,
 ):
     text_doc = ls.workspace.get_text_document(params.text_document.uri)
-    ast_diagnostics = ast_analyzer.get_diagnostics(text_doc)
+    ast_diagnostics = ast.update_ast(text_doc)
     ls.publish_diagnostics(params.text_document.uri, ast_diagnostics)
-    ast.update_ast(text_doc)
 
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)

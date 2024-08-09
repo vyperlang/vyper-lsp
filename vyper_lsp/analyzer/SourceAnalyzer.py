@@ -168,13 +168,15 @@ class SourceAnalyzer(Analyzer):
 
         return diagnostics
 
-    def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
-        diagnostics = []
-        if self.parser_enabled:
-            diagnostics.extend(self.get_parser_diagnostics(doc))
-        if self.compiler_enabled:
-            diagnostics.extend(self.get_compiler_diagnostics(doc))
-        return diagnostics
+    # TODO: If we want to gather parser diagnostics, we should find the right place to
+    # do so, but its not here.
+    # def get_diagnostics(self, doc: Document) -> List[Diagnostic]:
+    #     diagnostics = []
+    #     if self.parser_enabled:
+    #         diagnostics.extend(self.get_parser_diagnostics(doc))
+    #     if self.compiler_enabled:
+    #         diagnostics.extend(self.get_compiler_diagnostics(doc))
+    #     return diagnostics
 
     def get_completions(
         self, ls: LanguageServer, params: CompletionParams

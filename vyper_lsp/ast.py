@@ -2,14 +2,22 @@ import copy
 import logging
 from pathlib import Path
 from typing import Optional, List
-from lsprotocol.types import Position
+from lsprotocol.types import Diagnostic, Position
 from pygls.workspace import Document
 from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 from vyper.compiler.input_bundle import FilesystemInputBundle
+from vyper.utils import VyperException
+import warnings
+import re
+
+from vyper_lsp.utils import create_diagnostic, diagnostic_from_exception
 
 logger = logging.getLogger("vyper-lsp")
 
+
+pattern_text = r"(.+) is deprecated\. Please use `(.+)` instead\."
+deprecation_pattern = re.compile(pattern_text)
 
 class AST:
     ast_data = None
@@ -26,27 +34,61 @@ class AST:
         ast.ast_data_folded = node
         return ast
 
-    def update_ast(self, doc: Document):
-        self.build_ast(doc)
+    def update_ast(self, doc: Document) -> List[Diagnostic]:
+        return self.build_ast(doc)
 
-    def build_ast(self, doc: Document):
+    def build_ast(self, doc: Document) -> List[Diagnostic]:
         src = doc.source
         uri = doc.uri
         processed_uri = uri.replace("file://", "")
         uri_path = Path(processed_uri)
         uri_parent_path = uri_path.parent
         compiler_data = CompilerData(src, input_bundle=FilesystemInputBundle([uri_parent_path]))
-        try:
-            # unforunately we need this deep copy so the ast doesnt change
-            # out from under us when folding stuff happens
-            self.ast_data = copy.deepcopy(compiler_data.vyper_module)
-        except Exception as e:
-            logger.error(f"Error generating AST, {e}")
+        diagnostics = []
+        replacements = {}
+        warnings.simplefilter("always")
+        with warnings.catch_warnings(record=True) as w:
+            try:
+                # unforunately we need this deep copy so the ast doesnt change
+                # out from under us when folding stuff happens
+                self.ast_data = copy.deepcopy(compiler_data.vyper_module)
+                self.ast_data_annotated = compiler_data.annotated_vyper_module
+            except VyperException as e:
+                # make message string include class name
+                message = f"{e.__class__.__name__}: {e}"
+                if e.lineno is not None and e.col_offset is not None:
+                    diagnostics.append(diagnostic_from_exception(e))
+                if e.annotations:
+                    for a in e.annotations:
+                        diagnostics.append(diagnostic_from_exception(a, message=message))
 
-        try:
-            self.ast_data_annotated = compiler_data.annotated_vyper_module
-        except Exception as e:
-            logger.error(f"Error generating annotated AST, {e}")
+            for warning in w:
+                m = deprecation_pattern.match(str(warning.message))
+                if not m:
+                    continue
+                deprecated = m.group(1)
+                replacement = m.group(2)
+                replacements[deprecated] = replacement
+
+        # Iterate over doc.lines and find all deprecated values
+        for i, line in enumerate(doc.lines):
+            for deprecated, replacement in replacements.items():
+                for match in re.finditer(re.escape(deprecated), line):
+                    character_start = match.start()
+                    character_end = match.end()
+                    diagnostic_message = (
+                        f"{deprecated} is deprecated. Please use {replacement} instead."
+                    )
+                    diagnostics.append(
+                        create_diagnostic(
+                            line_num=i,
+                            character_start=character_start,
+                            character_end=character_end,
+                            message=diagnostic_message,
+                        )
+                    )
+
+        return diagnostics
 
     @property
     def best_ast(self):

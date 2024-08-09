@@ -9,8 +9,6 @@ from packaging.version import Version
 from vyper.ast import VyperNode
 from vyper.exceptions import VyperException
 
-from vyper.compiler import CompilerData
-
 logger = logging.getLogger("vyper-lsp")
 
 
@@ -186,6 +184,30 @@ def range_from_exception(node: VyperException) -> Range:
         start=Position(line=node.lineno - 1, character=node.col_offset),
         end=Position(line=node.end_lineno - 1, character=node.end_col_offset),
     )
+
+
+def create_diagnostic(
+    line_num: int, character_start: int, character_end: int, message: str
+) -> Diagnostic:
+    """
+    Helper function to create a diagnostic object.
+
+    :param line_num: The line number of the diagnostic.
+    :param character_start: The starting character position of the diagnostic.
+    :param character_end: The ending character position of the diagnostic.
+    :param message: The diagnostic message.
+    :return: A Diagnostic object.
+    """
+    return Diagnostic(
+        range=Range(
+            start=Position(line=line_num, character=character_start),
+            end=Position(line=line_num, character=character_end),
+        ),
+        message=message,
+        severity=DiagnosticSeverity.Warning,
+    )
+
+
 
 
 def diagnostic_from_exception(node: VyperException, message=None) -> Diagnostic:
