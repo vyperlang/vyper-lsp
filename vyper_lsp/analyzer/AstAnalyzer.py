@@ -267,7 +267,7 @@ class AstAnalyzer(Analyzer):
         with warnings.catch_warnings(record=True) as w:
             try:
                 compiler_data = CompilerData(doc.source)
-                compiler_data.vyper_module_folded
+                compiler_data.annotated_vyper_module
             except VyperException as e:
                 if e.lineno is not None and e.col_offset is not None:
                     diagnostics.append(diagnostic_from_exception(e))
