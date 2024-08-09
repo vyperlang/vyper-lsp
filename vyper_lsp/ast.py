@@ -1,9 +1,12 @@
 import copy
 import logging
+from pathlib import Path
 from typing import Optional, List
 from lsprotocol.types import Position
+from pygls.workspace import Document
 from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
+from vyper.compiler.input_bundle import FilesystemInputBundle
 
 logger = logging.getLogger("vyper-lsp")
 
@@ -23,11 +26,16 @@ class AST:
         ast.ast_data_folded = node
         return ast
 
-    def update_ast(self, document):
-        self.build_ast(document.source)
+    def update_ast(self, doc: Document):
+        self.build_ast(doc)
 
-    def build_ast(self, src: str):
-        compiler_data = CompilerData(src)
+    def build_ast(self, doc: Document):
+        src = doc.source
+        uri = doc.uri
+        processed_uri = uri.replace("file://", "")
+        uri_path = Path(processed_uri)
+        uri_parent_path = uri_path.parent
+        compiler_data = CompilerData(src, input_bundle=FilesystemInputBundle([uri_parent_path]))
         try:
             # unforunately we need this deep copy so the ast doesnt change
             # out from under us when folding stuff happens

@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 from typing import Optional, List
 import logging
 from .logging import LanguageServerLogHandler
@@ -69,7 +70,7 @@ def _check_minimum_vyper_version():
 
 @debouncer.debounce
 def validate_doc(
-    ls,
+    ls: LanguageServer,
     params: DidOpenTextDocumentParams
     | DidChangeTextDocumentParams
     | DidSaveTextDocumentParams,

@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import re
 from typing import List, Optional
 import warnings
@@ -14,6 +15,7 @@ from lsprotocol.types import (
 )
 from pygls.workspace import Document
 from vyper.compiler import CompilerData
+from vyper.compiler.input_bundle import FilesystemInputBundle
 from vyper.exceptions import VyperException
 from vyper.ast import nodes
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
@@ -278,7 +280,12 @@ class AstAnalyzer(Analyzer):
         warnings.simplefilter("always")
         with warnings.catch_warnings(record=True) as w:
             try:
-                compiler_data = CompilerData(doc.source)
+                uri = doc.uri
+                # uri withouth file://
+                uri_processed = uri.replace("file://", "")
+                uri_path = Path(uri_processed)
+                uri_parent_path = uri_path.parent
+                compiler_data = CompilerData(doc.source, input_bundle=FilesystemInputBundle([uri_parent_path]))
                 compiler_data.annotated_vyper_module
             except VyperException as e:
                 # make message string include class name
