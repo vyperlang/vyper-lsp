@@ -24,10 +24,6 @@ def get_source(filepath):
     return filepath.read_text()
 
 
-def get_compiler_data(filepath):
-    source = get_source(filepath)
-    return CompilerData(source)
-
 
 # detect if current line is a variable declaration
 def is_var_declaration(line):
