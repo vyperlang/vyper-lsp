@@ -97,8 +97,6 @@ class AST:
             return self.ast_data_annotated
         elif self.ast_data:
             return self.ast_data
-        elif self.ast_data_folded:
-            return self.ast_data_folded
 
         return None
 
