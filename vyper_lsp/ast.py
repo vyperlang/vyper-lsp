@@ -8,6 +8,7 @@ from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 from vyper.compiler.input_bundle import FilesystemInputBundle
 from vyper.utils import VyperException
+from vyper.cli.vyper_compile import get_search_paths
 import warnings
 import re
 
@@ -41,9 +42,9 @@ class AST:
         src = doc.source
         uri = doc.uri
         processed_uri = uri.replace("file://", "")
-        uri_path = Path(processed_uri)
-        uri_parent_path = uri_path.parent
-        compiler_data = CompilerData(src, input_bundle=FilesystemInputBundle([uri_parent_path]))
+        uri_parent_path = Path(processed_uri).parent
+        search_paths = get_search_paths([str(uri_parent_path)])
+        compiler_data = CompilerData(src, input_bundle=FilesystemInputBundle(search_paths))
         diagnostics = []
         replacements = {}
         warnings.simplefilter("always")
