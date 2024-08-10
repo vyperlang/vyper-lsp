@@ -17,7 +17,7 @@ from vyper_lsp.utils import create_diagnostic, diagnostic_from_exception
 logger = logging.getLogger("vyper-lsp")
 
 
-pattern_text = r"(.+) is deprecated\. Please use `(.+)` instead\."
+pattern_text = r"(.+) will be deprecated in a future release, use (.+) instead\."
 deprecation_pattern = re.compile(pattern_text)
 
 class AST:
