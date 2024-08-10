@@ -2,17 +2,18 @@ import copy
 import logging
 from pathlib import Path
 from typing import Optional, List
-from lsprotocol.types import Diagnostic, Position
+from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position
 from pygls.workspace import Document
 from vyper.ast import VyperNode, nodes
-from vyper.compiler import CompilerData
+from vyper.compiler import CompilerData, FileInput
 from vyper.compiler.input_bundle import FilesystemInputBundle
+from vyper.compiler.phases import ModuleT
 from vyper.utils import VyperException
 from vyper.cli.vyper_compile import get_search_paths
 import warnings
 import re
 
-from vyper_lsp.utils import create_diagnostic, diagnostic_from_exception
+from vyper_lsp.utils import create_diagnostic_warning, diagnostic_from_exception, working_directory_for_document, document_to_fileinput
 
 logger = logging.getLogger("vyper-lsp")
 
@@ -39,12 +40,10 @@ class AST:
         return self.build_ast(doc)
 
     def build_ast(self, doc: Document) -> List[Diagnostic]:
-        src = doc.source
-        uri = doc.uri
-        processed_uri = uri.replace("file://", "")
-        uri_parent_path = Path(processed_uri).parent
+        uri_parent_path = working_directory_for_document(doc)
         search_paths = get_search_paths([str(uri_parent_path)])
-        compiler_data = CompilerData(src, input_bundle=FilesystemInputBundle(search_paths))
+        fileinput = document_to_fileinput(doc)
+        compiler_data = CompilerData(fileinput, input_bundle=FilesystemInputBundle(search_paths))
         diagnostics = []
         replacements = {}
         warnings.simplefilter("always")
@@ -81,7 +80,7 @@ class AST:
                         f"{deprecated} is deprecated. Please use {replacement} instead."
                     )
                     diagnostics.append(
-                        create_diagnostic(
+                        create_diagnostic_warning(
                             line_num=i,
                             character_start=character_start,
                             character_end=character_end,

@@ -121,8 +121,10 @@ class AstAnalyzer(Analyzer):
         current_line = document.lines[params.position.line].strip()
         custom_types = self.ast.get_user_defined_types()
 
+        no_completions = CompletionList(is_incomplete=False, items=[])
+
         if not params.context:
-            return CompletionList(is_incomplete=False, items=[])
+            return no_completions
 
         if params.context.trigger_character == ".":
             # get element before the dot
@@ -150,6 +152,11 @@ class AstAnalyzer(Analyzer):
             return completions
 
         if params.context.trigger_character == ":":
+            # return empty_completions if the line starts with "flag", "struct", or "event"
+            object_declaration_keywords = ["flag", "struct", "event", "enum", "interface"]
+            if any(current_line.startswith(keyword) for keyword in object_declaration_keywords):
+                return no_completions
+
             for typ in custom_types + BASE_TYPES:
                 items.append(CompletionItem(label=typ, insert_text=f" {typ}"))
 
@@ -242,24 +249,3 @@ class AstAnalyzer(Analyzer):
             return f"(Constant) **{word}** : **{variable_type}**"
 
         return None
-
-    def create_diagnostic(
-        self, line_num: int, character_start: int, character_end: int, message: str
-    ) -> Diagnostic:
-        """
-        Helper function to create a diagnostic object.
-
-        :param line_num: The line number of the diagnostic.
-        :param character_start: The starting character position of the diagnostic.
-        :param character_end: The ending character position of the diagnostic.
-        :param message: The diagnostic message.
-        :return: A Diagnostic object.
-        """
-        return Diagnostic(
-            range=Range(
-                start=Position(line=line_num, character=character_start),
-                end=Position(line=line_num, character=character_end),
-            ),
-            message=message,
-            severity=DiagnosticSeverity.Warning,
-        )

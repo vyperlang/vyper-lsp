@@ -6,8 +6,10 @@ from importlib.metadata import version
 from typing import Optional
 from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
+from pygls.workspace import Document
 from vyper.ast import VyperNode
 from vyper.exceptions import VyperException
+from vyper.compiler import FileInput
 
 logger = logging.getLogger("vyper-lsp")
 
@@ -20,7 +22,6 @@ def get_source(filepath):
     base_path = Path(__file__).parent.parent
     filepath = base_path / filepath
     return filepath.read_text()
-
 
 
 # detect if current line is a variable declaration
@@ -186,7 +187,7 @@ def range_from_exception(node: VyperException) -> Range:
     )
 
 
-def create_diagnostic(
+def create_diagnostic_warning(
     line_num: int, character_start: int, character_end: int, message: str
 ) -> Diagnostic:
     """
@@ -226,3 +227,11 @@ def is_internal_fn(expression: str) -> bool:
 # this looks like duplicated code, could be in utils
 def is_state_var(expression: str) -> bool:
     return expression.startswith("self.") and "(" not in expression
+
+def document_to_fileinput(doc: Document) -> FileInput:
+    path = Path(doc.uri.replace("file://", ""))
+    return FileInput(0, path, path, doc.source)
+
+def working_directory_for_document(doc: Document) -> Path:
+    return Path(doc.uri.replace("file://", "")).parent
+
