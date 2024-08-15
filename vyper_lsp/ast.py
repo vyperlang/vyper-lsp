@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional, List
 from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position
 from pygls.workspace import Document
-from vyper.ast import VyperNode, nodes
+from vyper.ast import Module, VyperNode, nodes
 from vyper.compiler import CompilerData, FileInput
 from vyper.compiler.input_bundle import FilesystemInputBundle
 from vyper.compiler.phases import ModuleT
@@ -28,16 +28,47 @@ class AST:
 
     custom_type_node_types = (nodes.StructDef, nodes.FlagDef)
 
+    # Data parsed from AST for easy access
+    imported_fns_for_alias = {}
+
     @classmethod
     def from_node(cls, node: VyperNode):
         ast = cls()
         ast.ast_data = node
         ast.ast_data_annotated = node
-        ast.ast_data_folded = node
         return ast
 
+    def _load_functions(self, ast: Module):
+        import_from_nodes = ast.get_descendants((nodes.ImportFrom, nodes.Import))
+        node: nodes.ImportFrom | nodes.Import
+        for node in import_from_nodes:
+            import_info = node._metadata["import_info"]
+            module_t: ModuleT = import_info.typ.module_t
+            alias = node._metadata["import_info"].alias
+            if alias not in self.imported_fns_for_alias:
+                self.imported_fns_for_alias[alias] = {}
+            for name, fn in module_t.functions.items():
+                self.imported_fns_for_alias[alias][name] = fn
+        return
+
+    def get_imported_functions_for_alias(self, alias: str):
+        functions = {}
+        if alias not in self.imported_fns_for_alias:
+            return {}
+        for name, fn in self.imported_fns_for_alias[alias].items():
+            functions[name] = fn
+        return functions
+
+
     def update_ast(self, doc: Document) -> List[Diagnostic]:
-        return self.build_ast(doc)
+        diagnostics = self.build_ast(doc)
+        has_errors = any(d.severity == DiagnosticSeverity.Error for d in diagnostics)
+        logger.info(f"AST updated with {len(diagnostics)} diagnostics")
+        logger.info(f"AST updated with errors: {has_errors}")
+        if self.ast_data_annotated is not None:
+            logger.info("Loading functions from updated AST")
+            self._load_functions(self.ast_data_annotated)
+        return diagnostics
 
     def build_ast(self, doc: Document) -> List[Diagnostic]:
         uri_parent_path = working_directory_for_document(doc)
@@ -156,6 +187,9 @@ class AST:
         return [
             node.target.id for node in self.ast_data.get_descendants(nodes.VariableDecl)
         ]
+
+    def get_import_nodes(self) -> List[nodes.Import | nodes.ImportFrom]:
+        return self.get_descendants((nodes.Import, nodes.ImportFrom))
 
     def get_internal_function_nodes(self):
         function_nodes = self.get_descendants(nodes.FunctionDef)

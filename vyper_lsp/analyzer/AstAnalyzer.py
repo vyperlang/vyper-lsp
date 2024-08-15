@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Optional
+from typing import List, Optional
 from packaging.version import Version
 from lsprotocol.types import (
     Diagnostic,
@@ -114,6 +114,25 @@ class AstAnalyzer(Analyzer):
             active_signature=0,
         )
 
+    def dot_completions_for_element(self, element: str, top_level_node = None) -> List[CompletionItem]:
+        completions = []
+        if element == "self":
+            for fn in self.ast.get_internal_functions():
+                completions.append(CompletionItem(label=fn))
+            # TODO: This should exclude constants and immutables
+            for var in self.ast.get_state_variables():
+                completions.append(CompletionItem(label=var))
+        elif element in self.ast.imported_fns_for_alias:
+            if isinstance(top_level_node, nodes.FunctionDef):
+                for name, fn in self.ast.imported_fns_for_alias[element].items():
+                    if fn.is_internal or fn.is_deploy:
+                        completions.append(CompletionItem(label=name))
+            elif isinstance(top_level_node, nodes.ExportsDecl):
+                for name, fn in self.ast.imported_fns_for_alias[element].items():
+                    if fn.is_external:
+                        completions.append(CompletionItem(label=name))
+        return completions
+
     def get_completions_in_doc(
         self, document: Document, params: CompletionParams
     ) -> CompletionList:
@@ -129,14 +148,16 @@ class AstAnalyzer(Analyzer):
         if params.context.trigger_character == ".":
             # get element before the dot
             element = current_line.split(" ")[-1].split(".")[0]
+            logger.info(f"Element: {element}")
+
+            pos = params.position
+            surrounding_node = self.ast.find_top_level_node_at_pos(pos)
+            logger.info(f"Surrounding node: {surrounding_node}")
 
             # internal functions and state variables
-            if element == "self":
-                for fn in self.ast.get_internal_functions():
-                    items.append(CompletionItem(label=fn))
-                # TODO: This should exclude constants and immutables
-                for var in self.ast.get_state_variables():
-                    items.append(CompletionItem(label=var))
+            dot_completions = self.dot_completions_for_element(element, top_level_node=surrounding_node)
+            if len(dot_completions) > 0:
+                return CompletionList(is_incomplete=False, items=dot_completions)
             else:
                 # TODO: This is currently only correct for enums
                 # For structs, we'll need to get the type of the variable
