@@ -17,6 +17,7 @@ from lsprotocol.types import (
     CompletionParams,
     CompletionList,
     DeclarationParams,
+    ReferenceParams,
     DefinitionParams,
     HoverParams,
     Hover,
@@ -130,7 +131,7 @@ def go_to_definition(
 
 
 @server.feature(TEXT_DOCUMENT_REFERENCES)
-def find_references(ls: LanguageServer, params: DefinitionParams) -> List[Location]:
+def find_references(ls: LanguageServer, params: ReferenceParams) -> List[Location]:
     document = ls.workspace.get_text_document(params.text_document.uri)
     return [
         Location(uri=params.text_document.uri, range=range_)
