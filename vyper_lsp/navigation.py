@@ -61,8 +61,14 @@ class ASTNavigator:
         return is_top_level and is_state_variable
 
     def _is_constant_decl(self, line, word):
+        is_top_level = not line[0].isspace()
         is_constant = "constant(" in line
-        return is_constant and self._is_state_var_decl(line, word)
+        return is_top_level and is_constant and word in self.ast.get_constants()
+
+    def _is_immutable_decl(self, line, word):
+        is_top_level = not line[0].isspace()
+        is_immutable = "immutable(" in line
+        return is_top_level and is_immutable and word in self.ast.get_immutables()
 
     def _is_internal_fn(self, line, word, expression):
         is_def = line.startswith("def")
@@ -89,11 +95,17 @@ class ASTNavigator:
         if word in self.ast.get_structs() or word in self.ast.get_events():
             return finalize(self.ast.find_nodes_referencing_struct(word))
 
+        if word in self.ast.get_interfaces():
+            return finalize(self.ast.find_nodes_referencing_interfaces(word))
+
         if self._is_internal_fn(og_line, word, expression):
             return finalize(self.ast.find_nodes_referencing_internal_function(word))
 
         if self._is_constant_decl(og_line, word):
             return finalize(self.ast.find_nodes_referencing_constant(word))
+
+        if self._is_immutable_decl(og_line, word):
+            return finalize(self.ast.find_nodes_referencing_immutable(word))
 
         if self._is_state_var_decl(og_line, word):
             return finalize(self.ast.find_nodes_referencing_state_variable(word))
@@ -139,9 +151,7 @@ class ASTNavigator:
                 return self._find_state_variable_declaration(word)
         elif word in self.ast.get_user_defined_types():
             return self.find_type_declaration(word)
-        elif word in self.ast.get_events():
-            return self.find_type_declaration(word)
-        elif word in self.ast.get_constants():
+        elif word in self.ast.get_constants() or word in self.ast.get_immutables():
             return self._find_state_variable_declaration(word)
         elif isinstance(top_level_node, FunctionDef):
             range_ = self._find_variable_declaration_under_node(top_level_node, word)

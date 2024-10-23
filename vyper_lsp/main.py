@@ -144,7 +144,8 @@ def hover(ls: LanguageServer, params: HoverParams):
     document = ls.workspace.get_text_document(params.text_document.uri)
     hover_info = ast_analyzer.hover_info(document, params.position)
     if hover_info:
-        return Hover(contents=hover_info, range=None)
+        hover_content, range = hover_info
+        return Hover(contents=hover_content, range=range)
 
 
 @server.feature(

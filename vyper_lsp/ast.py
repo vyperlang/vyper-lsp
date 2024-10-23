@@ -13,7 +13,12 @@ class AST:
     ast_data_folded = None
     ast_data_unfolded = None
 
-    custom_type_node_types = (nodes.StructDef, nodes.EnumDef)
+    custom_type_node_types = (
+        nodes.StructDef,
+        nodes.EnumDef,
+        nodes.InterfaceDef,
+        nodes.EventDef,
+    )
 
     @classmethod
     def from_node(cls, node: VyperNode):
@@ -67,16 +72,21 @@ class AST:
         return self.best_ast.get_children(*args, **kwargs)
 
     def get_enums(self) -> List[str]:
-        return [node.name for node in self.get_descendants(nodes.EnumDef)]
+        return [node.name for node in self.get_top_level_nodes(nodes.EnumDef)]
 
     def get_structs(self) -> List[str]:
-        return [node.name for node in self.get_descendants(nodes.StructDef)]
+        return [node.name for node in self.get_top_level_nodes(nodes.StructDef)]
 
     def get_events(self) -> List[str]:
-        return [node.name for node in self.get_descendants(nodes.EventDef)]
+        return [node.name for node in self.get_top_level_nodes(nodes.EventDef)]
+
+    def get_interfaces(self):
+        return [node.name for node in self.get_top_level_nodes(nodes.InterfaceDef)]
 
     def get_user_defined_types(self):
-        return [node.name for node in self.get_descendants(self.custom_type_node_types)]
+        return [
+            node.name for node in self.get_top_level_nodes(self.custom_type_node_types)
+        ]
 
     def get_constants(self):
         # NOTE: Constants should be fetched from self.ast_data, they are missing
@@ -86,8 +96,27 @@ class AST:
 
         return [
             node.target.id
-            for node in self.ast_data.get_children(nodes.VariableDecl)
+            for node in self.get_top_level_nodes(nodes.VariableDecl)
             if node.is_constant
+        ]
+
+    def get_immutables(self):
+        return [
+            node.target.id
+            for node in self.get_top_level_nodes(nodes.VariableDecl)
+            if node.is_immutable
+        ]
+
+    def get_state_variables(self):
+        # NOTE: The state variables should be fetched from self.ast_data, they are
+        # missing from self.ast_data_unfolded and self.ast_data_folded when constants
+        if self.ast_data is None:
+            return []
+
+        return [
+            node.target.id
+            for node in self.get_top_level_nodes(nodes.VariableDecl)
+            if not node.is_constant and not node.is_immutable
         ]
 
     def get_enum_variants(self, enum: str):
@@ -103,16 +132,6 @@ class AST:
             return []
 
         return [node.target.id for node in struct_node.get_children(nodes.AnnAssign)]
-
-    def get_state_variables(self):
-        # NOTE: The state variables should be fetched from self.ast_data, they are
-        # missing from self.ast_data_unfolded and self.ast_data_folded when constants
-        if self.ast_data is None:
-            return []
-
-        return [
-            node.target.id for node in self.ast_data.get_descendants(nodes.VariableDecl)
-        ]
 
     def get_internal_function_nodes(self):
         function_nodes = self.get_descendants(nodes.FunctionDef)
@@ -138,13 +157,19 @@ class AST:
             nodes.Attribute, {"value.id": "self", "attr": variable}
         )
 
-    def find_nodes_referencing_constant(self, constant: str):
-        name_nodes = self.get_descendants(nodes.Name, {"id": constant})
+    def find_nodes_referencing_constant_or_immutable(self, name: str):
+        name_nodes = self.get_descendants(nodes.Name, {"id": name})
         return [
             node
             for node in name_nodes
             if not isinstance(node.get_ancestor(), nodes.VariableDecl)
         ]
+
+    def find_nodes_referencing_constant(self, constant: str):
+        return self.find_nodes_referencing_constant_or_immutable(constant)
+
+    def find_nodes_referencing_immutable(self, immutable: str):
+        return self.find_nodes_referencing_constant_or_immutable(immutable)
 
     def get_attributes_for_symbol(self, symbol: str):
         node = self.find_type_declaration_node_for_name(symbol)
@@ -159,12 +184,8 @@ class AST:
         return []
 
     def find_function_declaration_node_for_name(self, function: str):
-        for node in self.get_descendants(nodes.FunctionDef):
-            name_match = node.name == function
-            not_interface_declaration = not isinstance(
-                node.get_ancestor(), nodes.InterfaceDef
-            )
-            if name_match and not_interface_declaration:
+        for node in self.get_top_level_nodes(nodes.FunctionDef):
+            if node.name == function:
                 return node
 
         return None
@@ -175,15 +196,15 @@ class AST:
         if self.ast_data is None:
             return None
 
-        for node in self.ast_data.get_descendants(nodes.VariableDecl):
+        for node in self.get_top_level_nodes(nodes.VariableDecl):
             if node.target.id == variable:
                 return node
 
         return None
 
     def find_type_declaration_node_for_name(self, symbol: str):
-        searchable_types = self.custom_type_node_types + (nodes.EventDef,)
-        for node in self.get_descendants(searchable_types):
+        searchable_types = self.custom_type_node_types
+        for node in self.get_top_level_nodes(searchable_types):
             if node.name == symbol:
                 return node
             if isinstance(node, nodes.EnumDef):
@@ -193,17 +214,44 @@ class AST:
 
         return None
 
-    def find_nodes_referencing_enum(self, enum: str):
+    def find_nodes_referencing_type(self, type_name: str):
         return_nodes = []
 
-        for node in self.get_descendants(nodes.AnnAssign, {"annotation.id": enum}):
-            return_nodes.append(node)
-        for node in self.get_descendants(nodes.Attribute, {"value.id": enum}):
-            return_nodes.append(node)
-        for node in self.get_descendants(nodes.VariableDecl, {"annotation.id": enum}):
-            return_nodes.append(node)
-        for node in self.get_descendants(nodes.FunctionDef, {"returns.id": enum}):
-            return_nodes.append(node)
+        type_expressions = set()
+
+        for node in self.get_descendants():
+            if hasattr(node, "annotation"):
+                type_expressions.add(node.annotation)
+            elif hasattr(node, "returns") and node.returns:
+                type_expressions.add(node.returns)
+
+        # TODO cover more builtin
+        for node in self.get_descendants(nodes.Call, {"func.id": "empty"}):
+            type_expressions.add(node.args[0])
+
+        for node in type_expressions:
+            for subnode in node.get_descendants(include_self=True):
+                if isinstance(subnode, nodes.Name) and subnode.id == type_name:
+                    return_nodes.append(subnode)
+
+        return return_nodes
+
+    def find_nodes_referencing_callable_type(self, type_name: str):
+        return_nodes = self.find_nodes_referencing_type(type_name)
+
+        for node in self.get_descendants(nodes.Call, {"func.id": type_name}):
+            # ERC20(foo)
+            # my_struct({x:0})
+            return_nodes.append(node.func)
+
+        return return_nodes
+
+    def find_nodes_referencing_enum(self, type_name: str):
+        return_nodes = self.find_nodes_referencing_type(type_name)
+
+        for node in self.get_descendants(nodes.Attribute, {"value.id": type_name}):
+            # A.o
+            return_nodes.append(node.value)
 
         return return_nodes
 
@@ -212,19 +260,11 @@ class AST:
             nodes.Attribute, {"attr": variant, "value.id": enum}
         )
 
-    def find_nodes_referencing_struct(self, struct: str):
-        return_nodes = []
+    def find_nodes_referencing_struct(self, type_name: str):
+        return self.find_nodes_referencing_callable_type(type_name)
 
-        for node in self.get_descendants(nodes.AnnAssign, {"annotation.id": struct}):
-            return_nodes.append(node)
-        for node in self.get_descendants(nodes.Call, {"func.id": struct}):
-            return_nodes.append(node)
-        for node in self.get_descendants(nodes.VariableDecl, {"annotation.id": struct}):
-            return_nodes.append(node)
-        for node in self.get_descendants(nodes.FunctionDef, {"returns.id": struct}):
-            return_nodes.append(node)
-
-        return return_nodes
+    def find_nodes_referencing_interfaces(self, type_name: str):
+        return self.find_nodes_referencing_callable_type(type_name)
 
     def find_top_level_node_at_pos(self, pos: Position) -> Optional[VyperNode]:
         for node in self.get_top_level_nodes():

@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import warnings
 from packaging.version import Version
 from lsprotocol.types import (
@@ -26,6 +26,7 @@ from vyper_lsp.utils import (
     diagnostic_from_exception,
     is_internal_fn,
     is_state_var,
+    range_from_node,
 )
 from lsprotocol.types import (
     CompletionItem,
@@ -124,7 +125,6 @@ class AstAnalyzer(Analyzer):
             if element == "self":
                 for fn in self.ast.get_internal_functions():
                     items.append(CompletionItem(label=fn))
-                # TODO: This should exclude constants and immutables
                 for var in self.ast.get_state_variables():
                     items.append(CompletionItem(label=var))
             else:
@@ -194,7 +194,9 @@ class AstAnalyzer(Analyzer):
             function_def = match.group()
             return f"(Internal Function) {function_def}"
 
-    def hover_info(self, document: Document, pos: Position) -> Optional[str]:
+    def hover_info(
+        self, document: Document, pos: Position
+    ) -> Optional[Tuple[str, Range]]:
         if len(document.lines) < pos.line:
             return None
 
@@ -204,34 +206,33 @@ class AstAnalyzer(Analyzer):
 
         if is_internal_fn(full_word):
             node = self.ast.find_function_declaration_node_for_name(word)
-            return node and self._format_fn_signature(node)
+            return node and (self._format_fn_signature(node), range_from_node(node))
 
         if is_state_var(full_word):
             node = self.ast.find_state_variable_declaration_node_for_name(word)
-            if not node:
-                return None
-            variable_type = node.annotation.id
-            return f"(State Variable) **{word}** : **{variable_type}**"
+            return node and (
+                f"(State Variable) **{word}** : **{node.annotation.id}**",
+                range_from_node(node),
+            )
 
         if word in self.ast.get_structs():
             node = self.ast.find_type_declaration_node_for_name(word)
-            return node and f"(Struct) **{word}**"
+            return node and (f"(Struct) **{word}**", range_from_node(node))
 
         if word in self.ast.get_enums():
             node = self.ast.find_type_declaration_node_for_name(word)
-            return node and f"(Enum) **{word}**"
+            return node and (f"(Enum) **{word}**", range_from_node(node))
 
         if word in self.ast.get_events():
             node = self.ast.find_type_declaration_node_for_name(word)
-            return node and f"(Event) **{word}**"
+            return node and (f"(Event) **{word}**", range_from_node(node))
 
         if word in self.ast.get_constants():
             node = self.ast.find_state_variable_declaration_node_for_name(word)
-            if not node:
-                return None
-
-            variable_type = node.annotation.id
-            return f"(Constant) **{word}** : **{variable_type}**"
+            return node and (
+                f"(Constant) **{word}** : **{node.annotation.id}**",
+                range_from_node(node),
+            )
 
         return None
 
