@@ -4,11 +4,8 @@ from typing import List, Optional
 from packaging.version import Version
 from lsprotocol.types import (
     CompletionItemLabelDetails,
-    Diagnostic,
-    DiagnosticSeverity,
     ParameterInformation,
     Position,
-    Range,
     SignatureHelp,
     SignatureInformation,
 )
@@ -76,10 +73,9 @@ class AstAnalyzer(Analyzer):
             module, fn = matches.groups()
             logger.info(f"looking up function {fn} in module {module}")
             if module in self.ast.imports:
-                logger.info(f"found module")
+                logger.info("found module")
                 if fn := self.ast.imports[module].functions[fn]:
                     logger.info(f"args: {fn.arguments}")
-
 
         # this returns for all external functions
         # TODO: Implement checking interfaces
@@ -109,7 +105,6 @@ class AstAnalyzer(Analyzer):
             line = doc.lines[search_start_line_no]
             search_start_line_no += 1
 
-
         fn_label = line.removeprefix("def ").removesuffix(":\n")
 
         for arg in node.args.args:
@@ -131,10 +126,12 @@ class AstAnalyzer(Analyzer):
             active_signature=0,
         )
 
-    def _dot_completions_for_element(self, element: str, top_level_node = None, line: str="") -> List[CompletionItem]:
+    def _dot_completions_for_element(
+        self, element: str, top_level_node=None, line: str = ""
+    ) -> List[CompletionItem]:
         completions = []
         logger.info(f"getting dot completions for element: {element}")
-        #logger.info(f"import keys: {self.ast.imports.keys()}")
+        # logger.info(f"import keys: {self.ast.imports.keys()}")
         self.ast.imports.keys()
         if element == "self":
             for fn in self.ast.get_internal_functions():
@@ -148,7 +145,7 @@ class AstAnalyzer(Analyzer):
                 if getattr(fn.ast_def, "doc_string", False):
                     doc_string = fn.ast_def.doc_string.value
 
-                #out = self._format_fn_signature(fn.decl_node)
+                # out = self._format_fn_signature(fn.decl_node)
                 out = format_fn(fn)
 
                 # NOTE: this just gets ignored by most editors
@@ -157,20 +154,38 @@ class AstAnalyzer(Analyzer):
 
                 doc_string = f"{out}\n{doc_string}"
 
-                show_external: bool = isinstance(top_level_node, nodes.ExportsDecl) or line.startswith("exports:")
-                show_internal_and_deploy: bool = isinstance(top_level_node, nodes.FunctionDef)
+                show_external: bool = isinstance(
+                    top_level_node, nodes.ExportsDecl
+                ) or line.startswith("exports:")
+                show_internal_and_deploy: bool = isinstance(
+                    top_level_node, nodes.FunctionDef
+                )
 
                 if show_internal_and_deploy and (fn.is_internal or fn.is_deploy):
-                        completions.append(CompletionItem(label=name, documentation=doc_string, label_details=completion_item_label_details))
+                    completions.append(
+                        CompletionItem(
+                            label=name,
+                            documentation=doc_string,
+                            label_details=completion_item_label_details,
+                        )
+                    )
                 elif show_external and fn.is_external:
-                        completions.append(CompletionItem(label=name, documentation=doc_string, label_details=completion_item_label_details))
+                    completions.append(
+                        CompletionItem(
+                            label=name,
+                            documentation=doc_string,
+                            label_details=completion_item_label_details,
+                        )
+                    )
         elif element in self.ast.flags:
             members = self.ast.flags[element]._flag_members
             for member in members.keys():
                 completions.append(CompletionItem(label=member))
 
         if isinstance(top_level_node, nodes.FunctionDef):
-            var_declarations = top_level_node.get_descendants(nodes.AnnAssign, filters={"target.id": element})
+            var_declarations = top_level_node.get_descendants(
+                nodes.AnnAssign, filters={"target.id": element}
+            )
             assert len(var_declarations) <= 1
             for vardecl in var_declarations:
                 type_name = vardecl.annotation.id
@@ -202,7 +217,9 @@ class AstAnalyzer(Analyzer):
             surrounding_node = self.ast.find_top_level_node_at_pos(pos)
 
             # internal + imported fns, state vars, and flags
-            dot_completions = self._dot_completions_for_element(element, top_level_node=surrounding_node, line=current_line)
+            dot_completions = self._dot_completions_for_element(
+                element, top_level_node=surrounding_node, line=current_line
+            )
             if len(dot_completions) > 0:
                 return CompletionList(is_incomplete=False, items=dot_completions)
             else:
@@ -220,8 +237,17 @@ class AstAnalyzer(Analyzer):
 
         if params.context.trigger_character == ":":
             # return empty_completions if the line starts with "flag", "struct", or "event"
-            object_declaration_keywords = ["flag", "struct", "event", "enum", "interface"]
-            if any(current_line.startswith(keyword) for keyword in object_declaration_keywords):
+            object_declaration_keywords = [
+                "flag",
+                "struct",
+                "event",
+                "enum",
+                "interface",
+            ]
+            if any(
+                current_line.startswith(keyword)
+                for keyword in object_declaration_keywords
+            ):
                 return no_completions
 
             for typ in custom_types + BASE_TYPES:
@@ -287,7 +313,6 @@ class AstAnalyzer(Analyzer):
             return False
         var_name = expression.split("self.")[-1]
         return var_name in self.ast.variables
-
 
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
         if len(document.lines) < pos.line:

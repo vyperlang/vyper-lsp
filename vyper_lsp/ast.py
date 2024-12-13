@@ -1,11 +1,9 @@
 import copy
-from functools import cached_property
 import logging
-from pathlib import Path
 from typing import Optional, List
-from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position
+from lsprotocol.types import Diagnostic, Position
 from pygls.workspace import Document
-from vyper.ast import Module, VyperNode, nodes
+from vyper.ast import VyperNode, nodes
 from vyper.compiler import CompilerData
 from vyper.compiler.input_bundle import FilesystemInputBundle
 from vyper.compiler.phases import DEFAULT_CONTRACT_PATH, ModuleT
@@ -16,13 +14,19 @@ from vyper.cli.vyper_compile import get_search_paths
 import warnings
 import re
 
-from vyper_lsp.utils import create_diagnostic_warning, diagnostic_from_exception, working_directory_for_document, document_to_fileinput
+from vyper_lsp.utils import (
+    create_diagnostic_warning,
+    diagnostic_from_exception,
+    working_directory_for_document,
+    document_to_fileinput,
+)
 
 logger = logging.getLogger("vyper-lsp")
 
 
 pattern_text = r"(.+) will be deprecated in a future release, use (.+) instead\."
 deprecation_pattern = re.compile(pattern_text)
+
 
 class AST:
     ast_data = None
@@ -68,10 +72,14 @@ class AST:
         self.functions = ast._metadata["type"].functions
         self.variables = ast._metadata["type"].variables
 
-        flagt_list = [FlagT.from_FlagDef(node) for node in ast._metadata["type"].flag_defs]
+        flagt_list = [
+            FlagT.from_FlagDef(node) for node in ast._metadata["type"].flag_defs
+        ]
         self.flags = {flagt.name: flagt for flagt in flagt_list}
 
-        structt_list = [StructT.from_StructDef(node) for node in ast._metadata["type"].struct_defs]
+        structt_list = [
+            StructT.from_StructDef(node) for node in ast._metadata["type"].struct_defs
+        ]
         self.structs = {structt.name: structt for structt in structt_list}
 
     def update_ast(self, doc: Document) -> List[Diagnostic]:
@@ -84,7 +92,9 @@ class AST:
         uri_parent_path = working_directory_for_document(doc)
         search_paths = get_search_paths([str(uri_parent_path)])
         fileinput = document_to_fileinput(doc)
-        compiler_data = CompilerData(fileinput, input_bundle=FilesystemInputBundle(search_paths))
+        compiler_data = CompilerData(
+            fileinput, input_bundle=FilesystemInputBundle(search_paths)
+        )
         diagnostics = []
         replacements = {}
         warnings.simplefilter("always")
@@ -105,7 +115,9 @@ class AST:
                     diagnostics.append(diagnostic_from_exception(e))
                 if e.annotations:
                     for a in e.annotations:
-                        diagnostics.append(diagnostic_from_exception(a, message=message))
+                        diagnostics.append(
+                            diagnostic_from_exception(a, message=message)
+                        )
 
             for warning in w:
                 m = deprecation_pattern.match(str(warning.message))
@@ -155,11 +167,11 @@ class AST:
         return self.best_ast.get_children(*args, **kwargs)
 
     def get_enums(self) -> List[str]:
-        #return [node.name for node in self.get_descendants(nodes.FlagDef)]
+        # return [node.name for node in self.get_descendants(nodes.FlagDef)]
         return list(self.flags.keys())
 
     def get_structs(self) -> List[str]:
-        #return [node.name for node in self.get_descendants(nodes.StructDef)]
+        # return [node.name for node in self.get_descendants(nodes.StructDef)]
         return list(self.structs.keys())
 
     def get_events(self) -> List[str]:
@@ -177,7 +189,9 @@ class AST:
 
         return [
             node.target.id
-            for node in self.ast_data.get_children(nodes.VariableDecl, {"is_constant": True})
+            for node in self.ast_data.get_children(
+                nodes.VariableDecl, {"is_constant": True}
+            )
         ]
 
     def get_enum_variants(self, enum: str):

@@ -6,9 +6,11 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.10'
-    - run: pip install pre-commit
-    - run: pre-commit run --all-files
+    - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+    - name: Set up Python
+      run: uv python install
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+    - run: uv run pre-commit run --all-files

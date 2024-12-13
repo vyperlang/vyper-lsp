@@ -83,7 +83,7 @@ class SourceAnalyzer(Analyzer):
                 return True
             if (
                 last_error is not None
-                and type(last_error) == type(e)
+                and isinstance(last_error, type(e))
                 and last_error.line == e.line
             ):
                 return True

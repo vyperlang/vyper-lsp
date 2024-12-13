@@ -7,7 +7,7 @@ from typing import Optional
 from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
 from pygls.workspace import Document
-from vyper.ast import FunctionDef, VyperNode
+from vyper.ast import VyperNode
 from vyper.exceptions import VyperException
 from vyper.compiler import FileInput
 
@@ -47,6 +47,7 @@ _WORD_CHARS = string.ascii_letters + string.digits + "_"
 # REVIEW: these get_.*_at_cursor helpers would benefit from having
 # access to as much cursor information as possible (ex. line number),
 # it could open up some possibilies when refactoring for performance
+
 
 def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
     start = cursor_index
@@ -207,6 +208,7 @@ def create_diagnostic_warning(
         severity=DiagnosticSeverity.Warning,
     )
 
+
 def diagnostic_from_exception(node: VyperException, message=None) -> Diagnostic:
     return Diagnostic(
         range=range_from_exception(node),
@@ -214,19 +216,25 @@ def diagnostic_from_exception(node: VyperException, message=None) -> Diagnostic:
         severity=DiagnosticSeverity.Error,
     )
 
+
 def document_to_fileinput(doc: Document) -> FileInput:
     path = Path(doc.uri.replace("file://", ""))
     return FileInput(0, path, path, doc.source)
 
+
 def working_directory_for_document(doc: Document) -> Path:
     return Path(doc.uri.replace("file://", "")).parent
 
+
 def escape_underscores(expression: str) -> str:
     return expression.replace("_", "\\_")
+
 
 def format_fn(func) -> str:
     args = ", ".join([f"{arg.name}: _{arg.typ}_" for arg in func.arguments])
     return_value = f" -> _{func.return_type}_" if func.return_type is not None else ""
     mutability = func.mutability.value
-    out = f"def __{escape_underscores(func.name)}__({args}){return_value}: _{mutability}_"
+    out = (
+        f"def __{escape_underscores(func.name)}__({args}){return_value}: _{mutability}_"
+    )
     return out

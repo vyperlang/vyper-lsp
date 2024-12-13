@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 from typing import Optional, List
 import logging
 from .logging import LanguageServerLogHandler
