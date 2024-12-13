@@ -76,6 +76,7 @@ def validate_doc(
     | DidChangeTextDocumentParams
     | DidSaveTextDocumentParams,
 ):
+    logger.info("validating doc")
     text_doc = ls.workspace.get_text_document(params.text_document.uri)
     ast_diagnostics = ast.update_ast(text_doc)
     ls.publish_diagnostics(params.text_document.uri, ast_diagnostics)
@@ -86,7 +87,6 @@ async def did_open(ls: LanguageServer, params: DidOpenTextDocumentParams):
     _check_minimum_vyper_version()
     handler = LanguageServerLogHandler(ls)
     logger.addHandler(handler)
-    logger.info("Vyper Language Server started")
     validate_doc(ls, params)
 
 

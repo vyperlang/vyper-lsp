@@ -133,7 +133,7 @@ class ASTNavigator:
 
         # Determine the type of declaration and find it
         if full_word.startswith("self."):
-            if "(" in full_word:
+            if word in self.ast.functions:
                 return self._find_function_declaration(word)
             else:
                 return self._find_state_variable_declaration(word)
@@ -159,12 +159,16 @@ class ASTNavigator:
         word = get_word_at_cursor(og_line, pos.character)
         expression = get_expression_at_cursor(og_line, pos.character)
 
-        if "(" not in expression:
-            return None
-
         if expression.startswith("self."):
+            # TODO: This only supports local-module internal fns currently
+            if word not in self.ast.functions:
+                return None
             return self._find_function_declaration(word)
 
+        # TODO: should be looking up by alias to find implementation for imported fns
+
+        # TODO: this should check that we implement this interface before
+        # trying to find an implementation for the given function
         if og_line[0].isspace() and og_line.strip().startswith("def"):
             # only lookup external fns if we're in an interface def
             return self._find_function_declaration(word)

@@ -7,7 +7,7 @@ from typing import Optional
 from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
 from pygls.workspace import Document
-from vyper.ast import VyperNode
+from vyper.ast import FunctionDef, VyperNode
 from vyper.exceptions import VyperException
 from vyper.compiler import FileInput
 
@@ -47,7 +47,6 @@ _WORD_CHARS = string.ascii_letters + string.digits + "_"
 # REVIEW: these get_.*_at_cursor helpers would benefit from having
 # access to as much cursor information as possible (ex. line number),
 # it could open up some possibilies when refactoring for performance
-
 
 def get_word_at_cursor(sentence: str, cursor_index: int) -> str:
     start = cursor_index
@@ -112,11 +111,11 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     end = cursor_index
 
     # Find the start of the word
-    while start > 0 and sentence[start - 1] in _WORD_CHARS + ".[]()":
+    while start > 0 and sentence[start - 1] in _WORD_CHARS + ".[]":
         start -= 1
 
     # Find the end of the word
-    while end < len(sentence) and sentence[end] in _WORD_CHARS + ".[]()":
+    while end < len(sentence) and sentence[end] in _WORD_CHARS + ".[]":
         end += 1
 
     # Extract the word
@@ -208,25 +207,12 @@ def create_diagnostic_warning(
         severity=DiagnosticSeverity.Warning,
     )
 
-
-
-
 def diagnostic_from_exception(node: VyperException, message=None) -> Diagnostic:
     return Diagnostic(
         range=range_from_exception(node),
         message=message or str(node),
         severity=DiagnosticSeverity.Error,
     )
-
-
-# this looks like duplicated code, could be in utils
-def is_internal_fn(expression: str) -> bool:
-    return expression.startswith("self.") and "(" in expression
-
-
-# this looks like duplicated code, could be in utils
-def is_state_var(expression: str) -> bool:
-    return expression.startswith("self.") and "(" not in expression
 
 def document_to_fileinput(doc: Document) -> FileInput:
     path = Path(doc.uri.replace("file://", ""))
@@ -235,3 +221,12 @@ def document_to_fileinput(doc: Document) -> FileInput:
 def working_directory_for_document(doc: Document) -> Path:
     return Path(doc.uri.replace("file://", "")).parent
 
+def escape_underscores(expression: str) -> str:
+    return expression.replace("_", "\\_")
+
+def format_fn(func) -> str:
+    args = ", ".join([f"{arg.name}: _{arg.typ}_" for arg in func.arguments])
+    return_value = f" -> _{func.return_type}_" if func.return_type is not None else ""
+    mutability = func.mutability.value
+    out = f"def __{escape_underscores(func.name)}__({args}){return_value}: _{mutability}_"
+    return out

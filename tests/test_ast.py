@@ -424,7 +424,6 @@ def foo():
 
 def test_ast_no_data_returns_empty_and_none(ast: AST):
     ast.ast_data = None
-    ast.ast_data_folded = None
     ast.ast_data_annotated = None
 
     assert ast.get_constants() == []

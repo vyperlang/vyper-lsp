@@ -3,6 +3,7 @@ import re
 from typing import List, Optional
 from packaging.version import Version
 from lsprotocol.types import (
+    CompletionItemLabelDetails,
     Diagnostic,
     DiagnosticSeverity,
     ParameterInformation,
@@ -16,12 +17,11 @@ from vyper.ast import nodes
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
+    format_fn,
     get_expression_at_cursor,
     get_word_at_cursor,
     get_installed_vyper_version,
     get_internal_fn_name_at_cursor,
-    is_internal_fn,
-    is_state_var,
 )
 from lsprotocol.types import (
     CompletionItem,
@@ -34,7 +34,7 @@ from pygls.server import LanguageServer
 pattern_text = r"(.+) is deprecated\. Please use `(.+)` instead\."
 deprecation_pattern = re.compile(pattern_text)
 
-min_vyper_version = Version("0.3.7")
+min_vyper_version = Version("0.4.0")
 
 # Available base types
 UNSIGNED_INTEGER_TYPES = {f"uint{8*(i)}" for i in range(32, 0, -1)}
@@ -62,19 +62,36 @@ class AstAnalyzer(Analyzer):
 
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
-    ) -> SignatureHelp:
+    ) -> Optional[SignatureHelp]:
+        logger.info("signature help triggered")
         current_line = doc.lines[params.position.line]
         expression = get_expression_at_cursor(
             current_line, params.position.character - 1
         )
+        logger.info(f"expression: {expression}")
+        # regex for matching 'module.function'
+        fncall_pattern = "(.*)\\.(.*)"
+
+        if matches := re.match(fncall_pattern, expression):
+            module, fn = matches.groups()
+            logger.info(f"looking up function {fn} in module {module}")
+            if module in self.ast.imports:
+                logger.info(f"found module")
+                if fn := self.ast.imports[module].functions[fn]:
+                    logger.info(f"args: {fn.arguments}")
+
+
+        # this returns for all external functions
+        # TODO: Implement checking interfaces
+        if not expression.startswith("self."):
+            return None
+
         # TODO: Implement checking external functions, module functions, and interfaces
         fn_name = get_internal_fn_name_at_cursor(
             current_line, params.position.character - 1
         )
 
-        # this returns for all external functions
-        # TODO: Implement checking interfaces
-        if not expression.startswith("self."):
+        if not fn_name:
             return None
 
         node = self.ast.find_function_declaration_node_for_name(fn_name)
@@ -114,23 +131,54 @@ class AstAnalyzer(Analyzer):
             active_signature=0,
         )
 
-    def dot_completions_for_element(self, element: str, top_level_node = None) -> List[CompletionItem]:
+    def _dot_completions_for_element(self, element: str, top_level_node = None, line: str="") -> List[CompletionItem]:
         completions = []
+        logger.info(f"getting dot completions for element: {element}")
+        #logger.info(f"import keys: {self.ast.imports.keys()}")
+        self.ast.imports.keys()
         if element == "self":
             for fn in self.ast.get_internal_functions():
                 completions.append(CompletionItem(label=fn))
             # TODO: This should exclude constants and immutables
             for var in self.ast.get_state_variables():
                 completions.append(CompletionItem(label=var))
-        elif element in self.ast.imported_fns_for_alias:
-            if isinstance(top_level_node, nodes.FunctionDef):
-                for name, fn in self.ast.imported_fns_for_alias[element].items():
-                    if fn.is_internal or fn.is_deploy:
-                        completions.append(CompletionItem(label=name))
-            elif isinstance(top_level_node, nodes.ExportsDecl):
-                for name, fn in self.ast.imported_fns_for_alias[element].items():
-                    if fn.is_external:
-                        completions.append(CompletionItem(label=name))
+        elif self.ast.imports and element in self.ast.imports.keys():
+            for name, fn in self.ast.imports[element].functions.items():
+                doc_string = ""
+                if getattr(fn.ast_def, "doc_string", False):
+                    doc_string = fn.ast_def.doc_string.value
+
+                #out = self._format_fn_signature(fn.decl_node)
+                out = format_fn(fn)
+
+                # NOTE: this just gets ignored by most editors
+                # so we put the signature in the documentation string also
+                completion_item_label_details = CompletionItemLabelDetails(detail=out)
+
+                doc_string = f"{out}\n{doc_string}"
+
+                show_external: bool = isinstance(top_level_node, nodes.ExportsDecl) or line.startswith("exports:")
+                show_internal_and_deploy: bool = isinstance(top_level_node, nodes.FunctionDef)
+
+                if show_internal_and_deploy and (fn.is_internal or fn.is_deploy):
+                        completions.append(CompletionItem(label=name, documentation=doc_string, label_details=completion_item_label_details))
+                elif show_external and fn.is_external:
+                        completions.append(CompletionItem(label=name, documentation=doc_string, label_details=completion_item_label_details))
+        elif element in self.ast.flags:
+            members = self.ast.flags[element]._flag_members
+            for member in members.keys():
+                completions.append(CompletionItem(label=member))
+
+        if isinstance(top_level_node, nodes.FunctionDef):
+            var_declarations = top_level_node.get_descendants(nodes.AnnAssign, filters={"target.id": element})
+            assert len(var_declarations) <= 1
+            for vardecl in var_declarations:
+                type_name = vardecl.annotation.id
+                structt = self.ast.structs.get(type_name, None)
+                if structt:
+                    for member in structt.members:
+                        completions.append(CompletionItem(label=member))
+
         return completions
 
     def get_completions_in_doc(
@@ -147,20 +195,18 @@ class AstAnalyzer(Analyzer):
 
         if params.context.trigger_character == ".":
             # get element before the dot
+            # TODO: this could lead to bugs if we're not at EOL
             element = current_line.split(" ")[-1].split(".")[0]
-            logger.info(f"Element: {element}")
 
             pos = params.position
             surrounding_node = self.ast.find_top_level_node_at_pos(pos)
-            logger.info(f"Surrounding node: {surrounding_node}")
 
-            # internal functions and state variables
-            dot_completions = self.dot_completions_for_element(element, top_level_node=surrounding_node)
+            # internal + imported fns, state vars, and flags
+            dot_completions = self._dot_completions_for_element(element, top_level_node=surrounding_node, line=current_line)
             if len(dot_completions) > 0:
                 return CompletionList(is_incomplete=False, items=dot_completions)
             else:
-                # TODO: This is currently only correct for enums
-                # For structs, we'll need to get the type of the variable
+                logger.info(f"no dot completions for {element}")
                 for attr in self.ast.get_attributes_for_symbol(element):
                     items.append(CompletionItem(label=attr))
             completions = CompletionList(is_incomplete=False, items=items)
@@ -230,6 +276,19 @@ class AstAnalyzer(Analyzer):
             function_def = match.group()
             return f"(Internal Function) {function_def}"
 
+    def is_internal_fn(self, expression: str):
+        if not expression.startswith("self."):
+            return False
+        fn_name = expression.split("self.")[-1]
+        return fn_name in self.ast.functions and self.ast.functions[fn_name].is_internal
+
+    def is_state_var(self, expression: str):
+        if not expression.startswith("self."):
+            return False
+        var_name = expression.split("self.")[-1]
+        return var_name in self.ast.variables
+
+
     def hover_info(self, document: Document, pos: Position) -> Optional[str]:
         if len(document.lines) < pos.line:
             return None
@@ -238,11 +297,12 @@ class AstAnalyzer(Analyzer):
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
 
-        if is_internal_fn(full_word):
+        if self.is_internal_fn(full_word):
+            logger.info("looking for internal fn")
             node = self.ast.find_function_declaration_node_for_name(word)
             return node and self._format_fn_signature(node)
 
-        if is_state_var(full_word):
+        if self.is_state_var(full_word):
             node = self.ast.find_state_variable_declaration_node_for_name(word)
             if not node:
                 return None
