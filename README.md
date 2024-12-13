@@ -14,8 +14,6 @@ I like `pipx` because it handles creating an isolated env for executables and pu
 ### via `pip`
 You can install using `pip` if you manage your environments through some other means:
 
-> TODO: publish on pypi
-
 `pip install git+https://github.com/vyperlang/vyper-lsp.git`
 
 ## Verify installation
