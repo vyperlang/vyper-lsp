@@ -2,11 +2,7 @@
 
 ## Requirements
 
-Vyper LSP requires a minimum vyper version of 0.3.7. For full support, it is also required that the Vyper version installed in your virtual environment is capable of compiling your contract.
-
-For example, a vyper contract with `#pragma version 0.3.8` cannot be compiled with `0.3.10`, so you must install `vyper==0.3.8` if you want full support while working with this contract.
-
-A contract with `#pragma version >=0.3.8` will work fine with any installed vyper version greater than the requirement, so you can get full support while editing this contract if you have the latest vyper version installed.
+Vyper LSP requires a minimum vyper version of 0.4.0. For full support, it is also required that the Vyper version installed in your virtual environment is capable of compiling your contract.
 
 ## Install Vyper-LSP
 
