@@ -3,7 +3,7 @@ import string
 import re
 from pathlib import Path
 from importlib.metadata import version
-from typing import Optional
+from typing import Optional, Tuple
 from lsprotocol.types import Diagnostic, DiagnosticSeverity, Position, Range
 from packaging.version import Version
 from pygls.workspace import Document
@@ -125,42 +125,6 @@ def get_expression_at_cursor(sentence: str, cursor_index: int) -> str:
     return word
 
 
-def get_internal_fn_name_at_cursor(sentence: str, cursor_index: int) -> Optional[str]:
-    # TODO: Improve this function to handle more cases
-    # should be simpler, and handle when the cursor is on "self." before a fn name
-    # Split the sentence into segments at each 'self.'
-    segments = sentence.split("self.")
-
-    # Accumulated length to keep track of the cursor's position relative to the original sentence
-    accumulated_length = 0
-
-    for segment in segments:
-        if not segment:
-            accumulated_length += len("self.")
-            continue
-
-        # Update the accumulated length for each segment
-        segment_start = accumulated_length
-        segment_end = accumulated_length + len(segment)
-        accumulated_length = segment_end + 5  # Update for next segment
-
-        # Check if the cursor is within the current segment
-        if segment_start <= cursor_index <= segment_end:
-            # Extract the function name from the segment
-            function_name = re.findall(r"\b\w+\s*\(", segment)
-            if function_name:
-                # Take the function name closest to the cursor
-                closest_fn = min(
-                    function_name,
-                    key=lambda fn: abs(
-                        cursor_index - (segment_start + segment.find(fn))
-                    ),
-                )
-                return closest_fn.split("(")[0].strip()
-
-    return None
-
-
 def extract_enum_name(line: str):
     m = re.match(r"enum\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:", line)
     if m:
@@ -238,3 +202,15 @@ def format_fn(func) -> str:
         f"def __{escape_underscores(func.name)}__({args}){return_value}: _{mutability}_"
     )
     return out
+
+
+def parse_fncall_expression(expression: str) -> Optional[Tuple[str, str]]:
+    # regex for matching 'module.function' or 'module.function(args)', not capturing args
+    fncall_pattern = "(.*)\\.([^\\(]+)(?:\\(.*\\))?"
+
+    if matches := re.match(fncall_pattern, expression):
+        groups = matches.groups()
+        module, fn = groups
+        if "(" in module:
+            module = module.split("(")[-1]
+        return module, fn

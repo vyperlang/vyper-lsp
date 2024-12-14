@@ -36,7 +36,7 @@ def baz():
     )
 
     analyzer = AstAnalyzer(ast)
-    completions = analyzer.get_completions_in_doc(doc, params)
+    completions = analyzer._get_completions_in_doc(doc, params)
     assert len(completions.items) == 1
     assert "foo" in [c.label for c in completions.items]
 
@@ -71,7 +71,7 @@ def baz():
     )
 
     analyzer = AstAnalyzer(ast)
-    completions = analyzer.get_completions_in_doc(doc, params)
+    completions = analyzer._get_completions_in_doc(doc, params)
     assert len(completions.items) == 2
     assert "BAR" in [c.label for c in completions.items]
     assert "BAZ" in [c.label for c in completions.items]
@@ -103,7 +103,7 @@ def bar():
     )
 
     analyzer = AstAnalyzer(ast)
-    completions = analyzer.get_completions_in_doc(doc, params)
+    completions = analyzer._get_completions_in_doc(doc, params)
     assert len(completions.items) == 7
     labels = [c.label for c in completions.items]
     assert "internal" in labels

@@ -11,6 +11,7 @@ from lsprotocol.types import (
 )
 from pygls.workspace import Document
 from vyper.ast import nodes
+from vyper_lsp import utils
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
@@ -18,7 +19,6 @@ from vyper_lsp.utils import (
     get_expression_at_cursor,
     get_word_at_cursor,
     get_installed_vyper_version,
-    get_internal_fn_name_at_cursor,
 )
 from lsprotocol.types import (
     CompletionItem,
@@ -60,32 +60,25 @@ class AstAnalyzer(Analyzer):
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
     ) -> Optional[SignatureHelp]:
-        logger.info("signature help triggered")
+        # TODO: Implement checking external functions, module functions, and interfaces
         current_line = doc.lines[params.position.line]
         expression = get_expression_at_cursor(
             current_line, params.position.character - 1
         )
-        logger.info(f"expression: {expression}")
-        # regex for matching 'module.function'
-        fncall_pattern = "(.*)\\.(.*)"
+        parsed = utils.parse_fncall_expression(expression)
+        if parsed is None:
+            return None
+        module, fn_name = parsed
 
-        if matches := re.match(fncall_pattern, expression):
-            module, fn = matches.groups()
-            logger.info(f"looking up function {fn} in module {module}")
-            if module in self.ast.imports:
-                logger.info("found module")
-                if fn := self.ast.imports[module].functions[fn]:
-                    logger.info(f"args: {fn.arguments}")
+        logger.info(f"looking up function {fn_name} in module {module}")
+        if module in self.ast.imports:
+            logger.info("found module")
+            if fn := self.ast.imports[module].functions[fn_name]:
+                logger.info(f"args: {fn.arguments}")
 
         # this returns for all external functions
-        # TODO: Implement checking interfaces
         if not expression.startswith("self."):
             return None
-
-        # TODO: Implement checking external functions, module functions, and interfaces
-        fn_name = get_internal_fn_name_at_cursor(
-            current_line, params.position.character - 1
-        )
 
         if not fn_name:
             return None
@@ -196,7 +189,7 @@ class AstAnalyzer(Analyzer):
 
         return completions
 
-    def get_completions_in_doc(
+    def _get_completions_in_doc(
         self, document: Document, params: CompletionParams
     ) -> CompletionList:
         items = []
@@ -270,7 +263,7 @@ class AstAnalyzer(Analyzer):
         self, ls: LanguageServer, params: CompletionParams
     ) -> CompletionList:
         document = ls.workspace.get_text_document(params.text_document.uri)
-        return self.get_completions_in_doc(document, params)
+        return self._get_completions_in_doc(document, params)
 
     def _format_arg(self, arg: nodes.arg) -> str:
         if arg.annotation is None:
@@ -302,13 +295,13 @@ class AstAnalyzer(Analyzer):
             function_def = match.group()
             return f"(Internal Function) {function_def}"
 
-    def is_internal_fn(self, expression: str):
+    def _is_internal_fn(self, expression: str):
         if not expression.startswith("self."):
             return False
         fn_name = expression.split("self.")[-1]
         return fn_name in self.ast.functions and self.ast.functions[fn_name].is_internal
 
-    def is_state_var(self, expression: str):
+    def _is_state_var(self, expression: str):
         if not expression.startswith("self."):
             return False
         var_name = expression.split("self.")[-1]
@@ -322,12 +315,11 @@ class AstAnalyzer(Analyzer):
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
 
-        if self.is_internal_fn(full_word):
-            logger.info("looking for internal fn")
+        if self._is_internal_fn(full_word):
             node = self.ast.find_function_declaration_node_for_name(word)
             return node and self._format_fn_signature(node)
 
-        if self.is_state_var(full_word):
+        if self._is_state_var(full_word):
             node = self.ast.find_state_variable_declaration_node_for_name(word)
             if not node:
                 return None

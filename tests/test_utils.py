@@ -26,18 +26,9 @@ def test_get_expression_at_cursor():
     assert utils.get_expression_at_cursor(text, 21) == "self.baz (1,2,3)"
 
 
-def test_get_internal_fn_name_at_cursor():
-    text = "self.foo = 123"
-    assert utils.get_internal_fn_name_at_cursor(text, 0) is None
-    assert utils.get_internal_fn_name_at_cursor(text, 1) is None
-    assert utils.get_internal_fn_name_at_cursor(text, 5) is None
-    assert utils.get_internal_fn_name_at_cursor(text, 12) is None
-
-    text = "foo_bar = self.baz (1,2,3)"
-    assert utils.get_internal_fn_name_at_cursor(text, 0) is None
-    assert utils.get_internal_fn_name_at_cursor(text, 4) is None
-    assert utils.get_internal_fn_name_at_cursor(text, 21) == "baz"
+def test_parse_fncall_expression():
+    text = "self.foo()"
+    assert utils.parse_fncall_expression(text) == ("self", "foo")
 
     text = "self.foo(self.bar())"
-    assert utils.get_internal_fn_name_at_cursor(text, 7) == "foo"
-    assert utils.get_internal_fn_name_at_cursor(text, 15) == "bar"
+    assert utils.parse_fncall_expression(text) == ("self", "bar")
