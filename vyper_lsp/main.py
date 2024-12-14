@@ -61,7 +61,7 @@ logger = logging.getLogger("vyper-lsp")
 
 def _check_minimum_vyper_version():
     vy_version = get_installed_vyper_version()
-    min_version = Version("0.3.7")
+    min_version = Version("0.4.0")
     if vy_version < min_version:
         raise Exception(
             f"vyper version {vy_version} is not supported, please upgrade to {min_version} or higher"
