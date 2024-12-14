@@ -77,10 +77,7 @@ class AstAnalyzer(Analyzer):
                 logger.info(f"args: {fn.arguments}")
 
         # this returns for all external functions
-        if not expression.startswith("self."):
-            return None
-
-        if not fn_name:
+        if module != "self":
             return None
 
         node = self.ast.find_function_declaration_node_for_name(fn_name)
