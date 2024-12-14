@@ -57,6 +57,37 @@ class AstAnalyzer(Analyzer):
         else:
             self.diagnostics_enabled = True
 
+    def _handle_internal_fn_signature(
+        self, doc: Document, current_line: str, fn_name: str
+    ) -> Optional[SignatureHelp]:
+        node = self.ast.find_function_declaration_node_for_name(fn_name)
+        if not node:
+            return None
+
+        fn_name = node.name
+        parameters = []
+
+        fn_label = node.node_source_code.split(":\n")[0].removeprefix("def ")
+
+        for arg in node.args.args:
+            start_index = fn_label.find(arg.arg)
+            end_index = start_index + len(arg.arg)
+            parameters.append(
+                ParameterInformation(label=(start_index, end_index), documentation=None)
+            )
+        active_parameter = current_line.split("(")[-1].count(",")
+        return SignatureHelp(
+            signatures=[
+                SignatureInformation(
+                    label=fn_label,
+                    parameters=parameters,
+                    documentation=None,
+                    active_parameter=active_parameter or 0,
+                )
+            ],
+            active_signature=0,
+        )
+
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
     ) -> Optional[SignatureHelp]:
@@ -77,44 +108,8 @@ class AstAnalyzer(Analyzer):
                 logger.info(f"args: {fn.arguments}")
 
         # this returns for all external functions
-        if module != "self":
-            return None
-
-        node = self.ast.find_function_declaration_node_for_name(fn_name)
-        if not node:
-            return None
-
-        fn_name = node.name
-        parameters = []
-        line = doc.lines[node.lineno - 1]
-
-        decl_str = f"def {fn_name}("
-        search_start_line_no = 0
-
-        while not line.startswith(decl_str):
-            line = doc.lines[search_start_line_no]
-            search_start_line_no += 1
-
-        fn_label = line.removeprefix("def ").removesuffix(":\n")
-
-        for arg in node.args.args:
-            start_index = fn_label.find(arg.arg)
-            end_index = start_index + len(arg.arg)
-            parameters.append(
-                ParameterInformation(label=(start_index, end_index), documentation=None)
-            )
-        active_parameter = current_line.split("(")[-1].count(",")
-        return SignatureHelp(
-            signatures=[
-                SignatureInformation(
-                    label=fn_label,
-                    parameters=parameters,
-                    documentation=None,
-                    active_parameter=active_parameter or 0,
-                )
-            ],
-            active_signature=0,
-        )
+        if module == "self":
+            return self._handle_internal_fn_signature(doc, current_line, fn_name)
 
     def _dot_completions_for_element(
         self, element: str, top_level_node=None, line: str = ""

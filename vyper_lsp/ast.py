@@ -263,7 +263,9 @@ class AST:
 
         return []
 
-    def find_function_declaration_node_for_name(self, function: str):
+    def find_function_declaration_node_for_name(
+        self, function: str
+    ) -> Optional[nodes.FunctionDef]:
         for node in self.get_descendants(nodes.FunctionDef):
             name_match = node.name == function
             not_interface_declaration = not isinstance(
