@@ -23,15 +23,22 @@ def foobar():
     self.foo(self.baz(1), 2)
 """
     ast.build_ast(src)
+    analyzer = AstAnalyzer(ast)
 
     doc = Document(uri="<inline source code>", source=src)
+
+    pos = Position(line=3, character=11)
+    params = SignatureHelpParams(
+        text_document=TextDocumentIdentifier(doc.uri), position=pos
+    )
+    sig_help = analyzer.signature_help(doc, params)
+    assert sig_help is None
 
     pos = Position(line=7, character=13)
     params = SignatureHelpParams(
         text_document=TextDocumentIdentifier(doc.uri), position=pos
     )
 
-    analyzer = AstAnalyzer(ast)
     sig_help = analyzer.signature_help(doc, params)
     assert sig_help
     assert sig_help.active_signature == 0

@@ -58,7 +58,7 @@ class AstAnalyzer(Analyzer):
             self.diagnostics_enabled = True
 
     def _handle_internal_fn_signature(
-        self, doc: Document, current_line: str, fn_name: str
+        self, current_line: str, fn_name: str
     ) -> Optional[SignatureHelp]:
         node = self.ast.find_function_declaration_node_for_name(fn_name)
         if not node:
@@ -109,7 +109,7 @@ class AstAnalyzer(Analyzer):
 
         # this returns for all external functions
         if module == "self":
-            return self._handle_internal_fn_signature(doc, current_line, fn_name)
+            return self._handle_internal_fn_signature(current_line, fn_name)
 
     def _dot_completions_for_element(
         self, element: str, top_level_node=None, line: str = ""
