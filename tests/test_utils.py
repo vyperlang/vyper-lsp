@@ -32,3 +32,6 @@ def test_parse_fncall_expression():
 
     text = "self.foo(self.bar())"
     assert utils.parse_fncall_expression(text) == ("self", "bar")
+
+    text = "foobar"
+    assert utils.parse_fncall_expression(text) == None
