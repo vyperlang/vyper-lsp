@@ -30,9 +30,9 @@ from lsprotocol.types import (
 )
 from packaging.version import Version
 from pygls.server import LanguageServer
-from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.handlers.signatures import SignatureHandler
 from vyper_lsp.handlers.completion import CompletionHandler
+from vyper_lsp.handlers.hover import HoverHandler
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 from vyper_lsp.debounce import Debouncer
 
@@ -47,15 +47,11 @@ ast = AST()
 server = LanguageServer("vyper", "v0.0.1")
 navigator = ASTNavigator(ast)
 
-# AstAnalyzer is faster and better, but depends on the locally installed vyper version
-# we should keep it around for now and use it when the contract version pragma is missing
-# or if the version pragma matches the system version. its much faster so we can run it
-# on every keystroke, with sourceanalyzer we should only run it on save
-ast_analyzer = AstAnalyzer(ast)
 completer = CompletionHandler(ast)
 source_analyzer = SourceAnalyzer()
 
 signature_handler = SignatureHandler(ast)
+hover_handler = HoverHandler(ast)
 
 debouncer = Debouncer(wait=0.5)
 
@@ -144,7 +140,7 @@ def find_references(ls: LanguageServer, params: ReferenceParams) -> List[Locatio
 @server.feature(TEXT_DOCUMENT_HOVER)
 def hover(ls: LanguageServer, params: HoverParams):
     document = ls.workspace.get_text_document(params.text_document.uri)
-    hover_info = ast_analyzer.hover_info(document, params.position)
+    hover_info = hover_handler.hover_info(document, params.position)
     if hover_info:
         return Hover(contents=hover_info, range=None)
 

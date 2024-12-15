@@ -1,8 +1,8 @@
 from lsprotocol.types import Position, SignatureHelpParams, TextDocumentIdentifier
 from pygls.workspace import Document
 from vyper_lsp.ast import AST
-from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.handlers.signatures import SignatureHandler
+from vyper_lsp.handlers.hover import HoverHandler
 
 
 def test_signature_help(ast: AST):
@@ -84,8 +84,8 @@ def baz():
 
     pos = Position(line=10, character=11)
 
-    analyzer = AstAnalyzer(ast)
-    hover = analyzer.hover_info(doc, pos)
+    handler = HoverHandler(ast)
+    hover = handler.hover_info(doc, pos)
     assert hover
     assert (
         hover
@@ -96,6 +96,6 @@ def baz():
     )
 
     pos = Position(line=18, character=11)
-    hover = analyzer.hover_info(doc, pos)
+    hover = handler.hover_info(doc, pos)
     assert hover
     assert hover == "(Internal Function) def noreturn(x: uint256):"

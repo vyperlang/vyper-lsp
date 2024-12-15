@@ -11,7 +11,6 @@ from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
     get_expression_at_cursor,
     get_word_at_cursor,
-    get_installed_vyper_version,
 )
 
 pattern_text = r"(.+) is deprecated\. Please use `(.+)` instead\."
@@ -22,14 +21,9 @@ min_vyper_version = Version("0.4.0")
 logger = logging.getLogger("vyper-lsp")
 
 
-class AstAnalyzer:
+class HoverHandler:
     def __init__(self, ast: AST) -> None:
-        super().__init__()
         self.ast = ast
-        if get_installed_vyper_version() < min_vyper_version:
-            self.diagnostics_enabled = False
-        else:
-            self.diagnostics_enabled = True
 
     def _format_fn_signature(self, node: nodes.FunctionDef) -> str:
         pattern = r"def\s+(\w+)\((?:[^()]|\n)*\)(?:\s*->\s*[\w\[\], \n]+)?:"
