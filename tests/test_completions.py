@@ -7,7 +7,7 @@ from lsprotocol.types import (
 )
 from pygls.workspace import Document
 
-from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
+from vyper_lsp.handlers.completion import CompletionHandler
 
 
 def test_completion_internal_fn(ast):
@@ -35,7 +35,7 @@ def baz():
         text_document=TextDocumentIdentifier(doc.uri), position=pos, context=context
     )
 
-    analyzer = AstAnalyzer(ast)
+    analyzer = CompletionHandler(ast)
     completions = analyzer._get_completions_in_doc(doc, params)
     assert len(completions.items) == 1
     assert "foo" in [c.label for c in completions.items]
@@ -70,7 +70,7 @@ def baz():
         text_document=TextDocumentIdentifier(uri=doc.uri), position=pos, context=context
     )
 
-    analyzer = AstAnalyzer(ast)
+    analyzer = CompletionHandler(ast)
     completions = analyzer._get_completions_in_doc(doc, params)
     assert len(completions.items) == 2
     assert "BAR" in [c.label for c in completions.items]
@@ -102,7 +102,7 @@ def bar():
         text_document=TextDocumentIdentifier(uri=doc.uri), position=pos, context=context
     )
 
-    analyzer = AstAnalyzer(ast)
+    analyzer = CompletionHandler(ast)
     completions = analyzer._get_completions_in_doc(doc, params)
     assert len(completions.items) == 7
     labels = [c.label for c in completions.items]

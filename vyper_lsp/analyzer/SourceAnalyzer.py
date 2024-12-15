@@ -15,7 +15,6 @@ from lsprotocol.types import (
 from pygls.server import LanguageServer
 from pygls.workspace import Document
 from vvm.exceptions import VyperError
-from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 import vvm
 
 from pathlib import Path
@@ -54,7 +53,7 @@ def extract_version_pragma(line: str) -> Optional[str]:
 NUMBER_REGEX = re.compile(r"^(_\d+)*$")
 
 
-class SourceAnalyzer(Analyzer):
+class SourceAnalyzer:
     def __init__(self) -> None:
         self.parser_enabled = True
         self.compiler_enabled = False

@@ -32,6 +32,7 @@ from packaging.version import Version
 from pygls.server import LanguageServer
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
 from vyper_lsp.handlers.signatures import SignatureHandler
+from vyper_lsp.handlers.completion import CompletionHandler
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 from vyper_lsp.debounce import Debouncer
 
@@ -51,7 +52,7 @@ navigator = ASTNavigator(ast)
 # or if the version pragma matches the system version. its much faster so we can run it
 # on every keystroke, with sourceanalyzer we should only run it on save
 ast_analyzer = AstAnalyzer(ast)
-completer = ast_analyzer
+completer = CompletionHandler(ast)
 source_analyzer = SourceAnalyzer()
 
 signature_handler = SignatureHandler(ast)
