@@ -10,7 +10,7 @@ from lsprotocol.types import (
     SignatureInformation,
 )
 from pygls.workspace import Document
-from vyper.ast import nodes
+from vyper.ast import FunctionDef, nodes
 from vyper_lsp import utils
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
@@ -88,6 +88,33 @@ class AstAnalyzer(Analyzer):
             active_signature=0,
         )
 
+    def _handle_imported_fn_signature(
+        self, current_line: str, module: str, fn_name: str
+    ) -> Optional[SignatureHelp]:
+        if module in self.ast.imports:
+            if fn := self.ast.imports[module].functions[fn_name]:
+                logger.info(f"getting signature for {fn_name}")
+                logger.info(fn.decl_node)
+                node: FunctionDef = fn.decl_node
+                label = node.node_source_code.split("def ")[1].split(":\n")[0]
+                parameters = []
+                for arg in node.args.args:
+                    parameters.append(
+                        ParameterInformation(label=arg.arg, documentation=None)
+                    )
+                active_parameter = current_line.split("(")[-1].count(",")
+                return SignatureHelp(
+                    signatures=[
+                        SignatureInformation(
+                            label=label,
+                            parameters=parameters,
+                            documentation=None,
+                            active_parameter=active_parameter or 0,
+                        )
+                    ],
+                    active_signature=0,
+                )
+
     def signature_help(
         self, doc: Document, params: SignatureHelpParams
     ) -> Optional[SignatureHelp]:
@@ -101,15 +128,11 @@ class AstAnalyzer(Analyzer):
             return None
         module, fn_name = parsed
 
-        logger.info(f"looking up function {fn_name} in module {module}")
-        if module in self.ast.imports:
-            logger.info("found module")
-            if fn := self.ast.imports[module].functions[fn_name]:
-                logger.info(f"args: {fn.arguments}")
-
         # this returns for all external functions
         if module == "self":
             return self._handle_internal_fn_signature(current_line, fn_name)
+        else:
+            return self._handle_imported_fn_signature(current_line, module, fn_name)
 
     def _dot_completions_for_element(
         self, element: str, top_level_node=None, line: str = ""
