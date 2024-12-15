@@ -4,14 +4,10 @@ from typing import List, Optional
 from packaging.version import Version
 from lsprotocol.types import (
     CompletionItemLabelDetails,
-    ParameterInformation,
     Position,
-    SignatureHelp,
-    SignatureInformation,
 )
 from pygls.workspace import Document
-from vyper.ast import FunctionDef, nodes
-from vyper_lsp import utils
+from vyper.ast import nodes
 from vyper_lsp.analyzer.BaseAnalyzer import Analyzer
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import (
@@ -24,7 +20,6 @@ from lsprotocol.types import (
     CompletionItem,
     CompletionList,
     CompletionParams,
-    SignatureHelpParams,
 )
 from pygls.server import LanguageServer
 

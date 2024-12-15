@@ -4,12 +4,18 @@ from pygls.workspace import Document
 from vyper.ast import FunctionDef
 from typing import Optional
 
-from lsprotocol.types import ParameterInformation, SignatureHelp, SignatureHelpParams, SignatureInformation
+from lsprotocol.types import (
+    ParameterInformation,
+    SignatureHelp,
+    SignatureHelpParams,
+    SignatureInformation,
+)
 from vyper_lsp import utils
 from vyper_lsp.ast import AST
 from vyper_lsp.utils import get_expression_at_cursor
 
 logger = logging.getLogger("vyper-lsp")
+
 
 class SignatureHandler:
     def __init__(self, ast: AST):
