@@ -41,6 +41,41 @@ def baz():
     assert "foo" in [c.label for c in completions.items]
 
 
+def test_completions_struct_members(ast):
+    src = """
+struct Foo:
+    bar: uint256
+    baz: uint256
+
+@internal
+def foo():
+    return
+
+@external
+def bar():
+    self.foo()
+
+@external
+def baz():
+    g: Foo = Foo(bar=12, baz=13)
+"""
+    ast.build_ast(src)
+
+    src += """
+    g.
+"""
+    doc = Document(uri="<inline source code>", source=src)
+    pos = Position(line=17, character=6)
+    context = CompletionContext(trigger_character=".", trigger_kind=2)
+    params = CompletionParams(
+        text_document=TextDocumentIdentifier(uri=doc.uri), position=pos, context=context
+    )
+
+    analyzer = CompletionHandler(ast)
+    completions = analyzer._get_completions_in_doc(doc, params)
+    assert len(completions.items) == 2
+
+
 def test_completions_enum_variant(ast):
     src = """
 flag Foo:

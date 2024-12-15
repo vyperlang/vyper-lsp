@@ -334,9 +334,16 @@ class AST:
         return return_nodes
 
     def find_top_level_node_at_pos(self, pos: Position) -> Optional[VyperNode]:
-        for node in self.get_top_level_nodes():
+        nodes = self.get_top_level_nodes()
+        for node in nodes:
             if node.lineno <= pos.line and pos.line <= node.end_lineno:
                 return node
+
+        # return node with highest lineno if no node found
+        if nodes:
+            # sort
+            nodes.sort(key=lambda x: x.lineno, reverse=True)
+            return nodes[0]
 
         return None
 
