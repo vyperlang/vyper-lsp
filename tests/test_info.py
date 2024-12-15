@@ -2,6 +2,7 @@ from lsprotocol.types import Position, SignatureHelpParams, TextDocumentIdentifi
 from pygls.workspace import Document
 from vyper_lsp.ast import AST
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
+from vyper_lsp.handlers.signatures import SignatureHandler
 
 
 def test_signature_help(ast: AST):
@@ -23,7 +24,7 @@ def foobar():
     self.foo(self.baz(1), 2)
 """
     ast.build_ast(src)
-    analyzer = AstAnalyzer(ast)
+    analyzer = SignatureHandler(ast)
 
     doc = Document(uri="<inline source code>", source=src)
 

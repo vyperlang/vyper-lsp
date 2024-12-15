@@ -31,6 +31,7 @@ from lsprotocol.types import (
 from packaging.version import Version
 from pygls.server import LanguageServer
 from vyper_lsp.analyzer.AstAnalyzer import AstAnalyzer
+from vyper_lsp.handlers.signatures import SignatureHandler
 from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 from vyper_lsp.debounce import Debouncer
 
@@ -53,6 +54,7 @@ ast_analyzer = AstAnalyzer(ast)
 completer = ast_analyzer
 source_analyzer = SourceAnalyzer()
 
+signature_handler = SignatureHandler(ast)
 
 debouncer = Debouncer(wait=0.5)
 
@@ -152,7 +154,7 @@ def hover(ls: LanguageServer, params: HoverParams):
 )
 def signature_help(ls: LanguageServer, params: SignatureHelpParams):
     document = ls.workspace.get_text_document(params.text_document.uri)
-    signature_info = ast_analyzer.signature_help(document, params)
+    signature_info = signature_handler.signature_help(document, params)
     if signature_info:
         return signature_info
 
