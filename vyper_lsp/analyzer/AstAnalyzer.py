@@ -134,11 +134,53 @@ class AstAnalyzer(Analyzer):
         else:
             return self._handle_imported_fn_signature(current_line, module, fn_name)
 
+    def _dot_completions_for_module(
+        self, element: str, top_level_node=None, line: str = ""
+    ) -> List[CompletionItem]:
+        completions = []
+        for name, fn in self.ast.imports[element].functions.items():
+            doc_string = ""
+            if getattr(fn.ast_def, "doc_string", False):
+                doc_string = fn.ast_def.doc_string.value
+
+            out = format_fn(fn)
+
+            # NOTE: this just gets ignored by most editors
+            # so we put the signature in the documentation string also
+            completion_item_label_details = CompletionItemLabelDetails(detail=out)
+
+            doc_string = f"{out}\n{doc_string}"
+
+            show_external: bool = isinstance(
+                top_level_node, nodes.ExportsDecl
+            ) or line.startswith("exports:")
+            show_internal_and_deploy: bool = isinstance(
+                top_level_node, nodes.FunctionDef
+            )
+
+            if show_internal_and_deploy and (fn.is_internal or fn.is_deploy):
+                completions.append(
+                    CompletionItem(
+                        label=name,
+                        documentation=doc_string,
+                        label_details=completion_item_label_details,
+                    )
+                )
+            elif show_external and fn.is_external:
+                completions.append(
+                    CompletionItem(
+                        label=name,
+                        documentation=doc_string,
+                        label_details=completion_item_label_details,
+                    )
+                )
+
+        return completions
+
     def _dot_completions_for_element(
         self, element: str, top_level_node=None, line: str = ""
     ) -> List[CompletionItem]:
         completions = []
-        logger.info(f"getting dot completions for element: {element}")
         if element == "self":
             for fn in self.ast.get_internal_functions():
                 completions.append(CompletionItem(label=fn))
@@ -146,43 +188,9 @@ class AstAnalyzer(Analyzer):
             for var in self.ast.get_state_variables():
                 completions.append(CompletionItem(label=var))
         elif self.ast.imports and element in self.ast.imports.keys():
-            for name, fn in self.ast.imports[element].functions.items():
-                doc_string = ""
-                if getattr(fn.ast_def, "doc_string", False):
-                    doc_string = fn.ast_def.doc_string.value
-
-                # out = self._format_fn_signature(fn.decl_node)
-                out = format_fn(fn)
-
-                # NOTE: this just gets ignored by most editors
-                # so we put the signature in the documentation string also
-                completion_item_label_details = CompletionItemLabelDetails(detail=out)
-
-                doc_string = f"{out}\n{doc_string}"
-
-                show_external: bool = isinstance(
-                    top_level_node, nodes.ExportsDecl
-                ) or line.startswith("exports:")
-                show_internal_and_deploy: bool = isinstance(
-                    top_level_node, nodes.FunctionDef
-                )
-
-                if show_internal_and_deploy and (fn.is_internal or fn.is_deploy):
-                    completions.append(
-                        CompletionItem(
-                            label=name,
-                            documentation=doc_string,
-                            label_details=completion_item_label_details,
-                        )
-                    )
-                elif show_external and fn.is_external:
-                    completions.append(
-                        CompletionItem(
-                            label=name,
-                            documentation=doc_string,
-                            label_details=completion_item_label_details,
-                        )
-                    )
+            completions = self._dot_completions_for_module(
+                element, top_level_node=top_level_node, line=line
+            )
         elif element in self.ast.flags:
             members = self.ast.flags[element]._flag_members
             for member in members.keys():
@@ -229,7 +237,6 @@ class AstAnalyzer(Analyzer):
             if len(dot_completions) > 0:
                 return CompletionList(is_incomplete=False, items=dot_completions)
             else:
-                logger.info(f"no dot completions for {element}")
                 for attr in self.ast.get_attributes_for_symbol(element):
                     items.append(CompletionItem(label=attr))
             completions = CompletionList(is_incomplete=False, items=items)
@@ -242,13 +249,14 @@ class AstAnalyzer(Analyzer):
             return completions
 
         if params.context.trigger_character == ":":
-            # return empty_completions if the line starts with "flag", "struct", or "event"
+            # return empty_completions if colon isn't for a type annotation
             object_declaration_keywords = [
                 "flag",
                 "struct",
                 "event",
                 "enum",
                 "interface",
+                "def",
             ]
             if any(
                 current_line.startswith(keyword)
@@ -277,29 +285,6 @@ class AstAnalyzer(Analyzer):
     ) -> CompletionList:
         document = ls.workspace.get_text_document(params.text_document.uri)
         return self._get_completions_in_doc(document, params)
-
-    def _format_arg(self, arg: nodes.arg) -> str:
-        if arg.annotation is None:
-            return arg.arg
-
-        # Handle case when annotation is a subscript (e.g., List[int])
-        if isinstance(arg.annotation, nodes.Subscript):
-            annotation_base = arg.annotation.value.id  # e.g., 'List' in 'List[int]'
-
-            # Check if the subscript's slice is a simple name
-            if isinstance(arg.annotation.slice.value, nodes.Name):
-                annotation_subscript = (
-                    arg.annotation.slice.value.id
-                )  # e.g., 'int' in 'List[int]'
-            else:
-                annotation_subscript = (
-                    arg.annotation.slice.value.value
-                )  # Handle other subscript types
-
-            return f"{arg.arg}: {annotation_base}[{annotation_subscript}]"
-
-        # Default case for simple annotations
-        return f"{arg.arg}: {arg.annotation.id}"
 
     def _format_fn_signature(self, node: nodes.FunctionDef) -> str:
         pattern = r"def\s+(\w+)\((?:[^()]|\n)*\)(?:\s*->\s*[\w\[\], \n]+)?:"
