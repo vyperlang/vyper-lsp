@@ -116,8 +116,6 @@ class AstAnalyzer(Analyzer):
     ) -> List[CompletionItem]:
         completions = []
         logger.info(f"getting dot completions for element: {element}")
-        # logger.info(f"import keys: {self.ast.imports.keys()}")
-        self.ast.imports.keys()
         if element == "self":
             for fn in self.ast.get_internal_functions():
                 completions.append(CompletionItem(label=fn))
