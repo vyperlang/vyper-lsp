@@ -33,7 +33,6 @@ from pygls.server import LanguageServer
 from vyper_lsp.handlers.signatures import SignatureHandler
 from vyper_lsp.handlers.completion import CompletionHandler
 from vyper_lsp.handlers.hover import HoverHandler
-from vyper_lsp.analyzer.SourceAnalyzer import SourceAnalyzer
 from vyper_lsp.debounce import Debouncer
 
 from vyper_lsp.navigation import ASTNavigator
@@ -48,8 +47,6 @@ server = LanguageServer("vyper", "v0.0.1")
 navigator = ASTNavigator(ast)
 
 completer = CompletionHandler(ast)
-source_analyzer = SourceAnalyzer()
-
 signature_handler = SignatureHandler(ast)
 hover_handler = HoverHandler(ast)
 
