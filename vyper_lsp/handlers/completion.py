@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from typing import List
 from vyper.ast import nodes
 from lsprotocol.types import (
@@ -30,6 +29,12 @@ DECORATORS = ["payable", "nonpayable", "view", "pure", "external", "internal", "
 class CompletionHandler:
     def __init__(self, ast: AST):
         self.ast = ast
+
+    def get_completions(
+        self, ls: LanguageServer, params: CompletionParams
+    ) -> CompletionList:
+        document = ls.workspace.get_text_document(params.text_document.uri)
+        return self._get_completions_in_doc(document, params)
 
     def _dot_completions_for_module(
         self, element: str, top_level_node=None, line: str = ""
@@ -176,9 +181,3 @@ class CompletionHandler:
                 return completions
 
         return CompletionList(is_incomplete=False, items=[])
-
-    def get_completions(
-        self, ls: LanguageServer, params: CompletionParams
-    ) -> CompletionList:
-        document = ls.workspace.get_text_document(params.text_document.uri)
-        return self._get_completions_in_doc(document, params)
