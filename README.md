@@ -4,6 +4,45 @@
 
 Vyper LSP requires a minimum vyper version of 0.4.0. For full support, it is also required that the Vyper version installed in your virtual environment is capable of compiling your contract.
 
+## Development
+
+### Setting up Development Environment
+
+1. **Install uv** (Fast Python package installer and resolver)
+
+   ```bash
+   # Install with pip
+   pip install uv
+   
+   # Or on macOS with Homebrew
+   brew install uv
+   ```
+
+2. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/vyperlang/vyper-lsp.git
+   cd vyper-lsp
+   ```
+
+3. **Install dependencies**
+
+   ```bash
+   uv pip install -e .
+   ```
+
+4. **Run tests**
+
+   ```bash
+   uv run pytest
+   ```
+
+### Code Quality and Testing
+
+- Run linting: `ruff check .`
+- Format code: `ruff format .`
+- Generate test coverage: `coverage run -m pytest && coverage report`
+
 ## Install Vyper-LSP
 
 ### via `pipx`
