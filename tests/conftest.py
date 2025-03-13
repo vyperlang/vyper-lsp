@@ -25,7 +25,7 @@ def vyper_document(tmp_path) -> Tuple[Document, Path]:
 @pytest.fixture
 def example_documents() -> Dict[str, str]:
     """Return the source code of example documents."""
-    examples_dir = Path(__file__).parent.parent / "examples"
+    examples_dir = Path(__file__).parent.parent / "examples" if "__file__" in globals() else Path.cwd()
     return {
         "Foo.vy": (examples_dir / "Foo.vy").read_text(),
         "LiquidityGauge.vy": (examples_dir / "LiquidityGauge.vy").read_text(),
@@ -57,7 +57,7 @@ def get_point() -> Point:
 def enum_code() -> str:
     """Return a simple Vyper contract with an enum definition."""
     return """
-flag Color:
+enum Color:
     RED
     GREEN
     BLUE
