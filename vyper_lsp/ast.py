@@ -9,7 +9,7 @@ from vyper.compiler.input_bundle import FilesystemInputBundle
 from vyper.compiler.phases import DEFAULT_CONTRACT_PATH, ModuleT
 from vyper.semantics.types import StructT
 from vyper.semantics.types.user import FlagT
-from vyper.utils import VyperException
+from vyper.exceptions import VyperException
 from vyper.cli.vyper_compile import get_search_paths
 import warnings
 import re
