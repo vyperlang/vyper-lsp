@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Tuple
 from lsprotocol.types import Position, Range
 from pygls.workspace import Document
 
@@ -104,12 +104,13 @@ def position(line: int = 0, character: int = 0) -> Position:
 
 
 @pytest.fixture
-def range_fixture(start_line: int = 0, start_char: int = 0, 
-              end_line: int = 0, end_char: int = 0) -> Range:
+def range_fixture(
+    start_line: int = 0, start_char: int = 0, end_line: int = 0, end_char: int = 0
+) -> Range:
     """Create a Range instance for testing."""
     return Range(
         start=Position(line=start_line, character=start_char),
-        end=Position(line=end_line, character=end_char)
+        end=Position(line=end_line, character=end_char),
     )
 
 
@@ -117,8 +118,8 @@ def range_fixture(start_line: int = 0, start_char: int = 0,
 def ast_with_code(request, ast):
     """
     Parameterized fixture that loads code into an AST instance.
-    
-    Usage: 
+
+    Usage:
     @pytest.mark.parametrize('ast_with_code', ['struct_code', 'enum_code', 'function_code'], indirect=True)
     def test_something(ast_with_code):
         # ast_with_code has the specified code loaded
