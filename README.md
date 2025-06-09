@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Vyper LSP requires a minimum vyper version of 0.4.0. For full support, it is also required that the Vyper version installed in your virtual environment is capable of compiling your contract.
+Vyper LSP requires a minimum vyper version of 0.4.1. For full support, it is also required that the Vyper version installed in your virtual environment is capable of compiling your contract.
 
 ## Development
 
@@ -13,7 +13,7 @@ Vyper LSP requires a minimum vyper version of 0.4.0. For full support, it is als
    ```bash
    # Install with pip
    pip install uv
-   
+
    # Or on macOS with Homebrew
    brew install uv
    ```

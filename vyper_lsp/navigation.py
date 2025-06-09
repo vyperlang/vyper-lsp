@@ -165,7 +165,15 @@ class ASTNavigator:
                 return None
             return self._find_function_declaration(word)
 
-        # TODO: should be looking up by alias to find implementation for imported fns
+        # Check for module function calls (e.g., "lib.increment_counter")
+        if "." in expression:
+            parts = expression.split(".")
+            if len(parts) == 2:
+                module_name, function_name = parts
+                if module_name in self.ast.imports:
+                    # TODO: Navigate to the actual function definition in the imported module
+                    # For now, we don't have the AST of the imported file readily available
+                    pass
 
         # TODO: this should check that we implement this interface before
         # trying to find an implementation for the given function

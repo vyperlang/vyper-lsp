@@ -52,6 +52,20 @@ class HoverHandler:
         word = get_word_at_cursor(og_line, pos.character)
         full_word = get_expression_at_cursor(og_line, pos.character)
 
+        # Check for module references (e.g., "lib.function" or "lib.variable")
+        if "." in full_word and not full_word.startswith("self."):
+            parts = full_word.split(".")
+            if len(parts) == 2:
+                module_name, member_name = parts
+                if module_name in self.ast.imports:
+                    module = self.ast.imports[module_name]
+                    if hasattr(module, "functions") and member_name in module.functions:
+                        fn = module.functions[member_name]
+                        return f"(Module Function) **{module_name}.{member_name}**"
+                    elif hasattr(module, "variables") and member_name in module.variables:
+                        var = module.variables[member_name]
+                        return f"(Module Variable) **{module_name}.{member_name}**"
+
         if self._is_internal_fn(full_word):
             node = self.ast.find_function_declaration_node_for_name(word)
             return node and self._format_fn_signature(node)

@@ -58,10 +58,18 @@ class AST:
         node: nodes.ImportFrom | nodes.Import
         imports = {}
         for node in import_nodes:
-            import_info = node._metadata["import_info"]
-            module_t: ModuleT = import_info.typ.module_t
-            alias = node._metadata["import_info"].alias
-            imports[alias] = module_t
+            import_info = node._metadata.get("import_info")
+            if import_info:
+                alias = import_info.alias
+                # Handle module imports (vyper files)
+                if hasattr(import_info, "parsed") and isinstance(import_info.parsed, nodes.Module):
+                    # Get the module type from the parsed AST
+                    parsed_module = import_info.parsed
+                    if hasattr(parsed_module, "_metadata") and "type" in parsed_module._metadata:
+                        imports[alias] = parsed_module._metadata["type"]
+                # Handle interface imports (json/vyi files)
+                elif hasattr(import_info, "parsed"):
+                    imports[alias] = import_info.parsed
 
         self.imports = imports
 

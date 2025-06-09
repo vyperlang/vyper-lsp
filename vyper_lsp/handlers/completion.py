@@ -40,40 +40,56 @@ class CompletionHandler:
         self, element: str, top_level_node=None, line: str = ""
     ) -> List[CompletionItem]:
         completions = []
-        for name, fn in self.ast.imports[element].functions.items():
-            doc_string = ""
-            if getattr(fn.ast_def, "doc_string", False):
-                doc_string = fn.ast_def.doc_string.value
+        module = self.ast.imports.get(element)
+        if not module:
+            return completions
+            
+        # Handle functions
+        if hasattr(module, "functions"):
+            for name, fn in module.functions.items():
+                doc_string = ""
+                if hasattr(fn, "ast_def") and getattr(fn.ast_def, "doc_string", False):
+                    doc_string = fn.ast_def.doc_string.value
 
-            out = format_fn(fn)
+                out = format_fn(fn)
 
-            # NOTE: this just gets ignored by most editors
-            # so we put the signature in the documentation string also
-            completion_item_label_details = CompletionItemLabelDetails(detail=out)
+                # NOTE: this just gets ignored by most editors
+                # so we put the signature in the documentation string also
+                completion_item_label_details = CompletionItemLabelDetails(detail=out)
 
-            doc_string = f"{out}\n{doc_string}"
+                doc_string = f"{out}\n{doc_string}"
 
-            show_external: bool = isinstance(
-                top_level_node, nodes.ExportsDecl
-            ) or line.startswith("exports:")
-            show_internal_and_deploy: bool = isinstance(
-                top_level_node, nodes.FunctionDef
-            )
-
-            if show_internal_and_deploy and (fn.is_internal or fn.is_deploy):
-                completions.append(
-                    CompletionItem(
-                        label=name,
-                        documentation=doc_string,
-                        label_details=completion_item_label_details,
-                    )
+                show_external: bool = isinstance(
+                    top_level_node, nodes.ExportsDecl
+                ) or line.startswith("exports:")
+                show_internal_and_deploy: bool = isinstance(
+                    top_level_node, nodes.FunctionDef
                 )
-            elif show_external and fn.is_external:
+
+                if show_internal_and_deploy and (fn.is_internal or fn.is_deploy):
+                    completions.append(
+                        CompletionItem(
+                            label=name,
+                            documentation=doc_string,
+                            label_details=completion_item_label_details,
+                        )
+                    )
+                elif show_external and fn.is_external:
+                    completions.append(
+                        CompletionItem(
+                            label=name,
+                            documentation=doc_string,
+                            label_details=completion_item_label_details,
+                        )
+                    )
+                    
+        # Handle module variables
+        if hasattr(module, "variables"):
+            for name, var in module.variables.items():
                 completions.append(
                     CompletionItem(
                         label=name,
-                        documentation=doc_string,
-                        label_details=completion_item_label_details,
+                        documentation=f"Variable: {name}"
                     )
                 )
 
